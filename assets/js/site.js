@@ -35,30 +35,43 @@
 
   /* ---------- site map (also the search index) ---------- */
   const GROUPS = [
-    { title: "Get Started", num: "01", items: [
-      { t: "Home", href: "index.html", ic: "book", kw: "introduction overview start", built: true },
-      { t: "What is JWT?", href: "pages/what-is-jwt.html", ic: "book", kw: "stateless session authentication lifecycle", built: true },
-      { t: "Token Structure", href: "pages/structure.html", ic: "layers", kw: "header payload signature base64url claims decode", built: true },
-      { t: "Algorithms", href: "pages/algorithms.html", ic: "key", kw: "hs256 rs256 es256 eddsa hmac rsa ecdsa none symmetric asymmetric", built: true }
-    ]},
-    { title: "Authentication", num: "02", items: [
-      { t: "Auth Flow", href: "pages/auth-flow.html", ic: "flow", kw: "login access refresh token bearer rotation expiration", built: true },
-      { t: "OAuth vs JWT", href: "pages/oauth-vs-jwt.html", ic: "compare", kw: "oauth2 openid connect session comparison", built: true }
-    ]},
-    { title: "Security", num: "03", items: [
-      { t: "Vulnerabilities", href: "pages/vulnerabilities.html", ic: "bug", kw: "none algorithm confusion kid jku jwk tampering weak secret replay xss csrf", built: true },
-      { t: "Best Practices", href: "pages/best-practices.html", ic: "shield", kw: "secrets rotation expiration httponly samesite cookie validation logout", built: false },
-      { t: "Attack Demos", href: "pages/playground.html#demos", ic: "target", kw: "none weak secret tamper expired signature mismatch sandbox", built: true }
-    ]},
-    { title: "Practice", num: "04", items: [
-      { t: "Playground", href: "pages/playground.html", ic: "play", kw: "encoder decoder verify sign hs256 interactive", built: true },
-      { t: "Libraries", href: "pages/libraries.html", ic: "code", kw: "node express flask django php spring go dotnet jsonwebtoken pyjwt", built: true }
-    ]},
-    { title: "Reference", num: "05", items: [
-      { t: "Resources", href: "pages/resources.html", ic: "link", kw: "owasp portswigger rfc 7519 jwt.io books github", built: true },
-      { t: "Roadmaps", href: "pages/roadmaps.html", ic: "map", kw: "beginner advanced api security learning path", built: true }
-    ]}
-  ];
+   { title: "Get Started", num: "01", items: [
+     { t: "Home", href: "index.html", ic: "book", kw: "introduction overview start", built: true },
+     { t: "What is JWT?", href: "pages/what-is-jwt.html", ic: "book", kw: "stateless session authentication lifecycle", built: true },
+     { t: "Sessions vs JWT", href: "pages/sessions-vs-jwt.html", ic: "compare", kw: "stateful stateless cookie when not to use revocation", built: false },
+     { t: "Token Structure", href: "pages/structure.html", ic: "layers", kw: "header payload signature base64url claims decode", built: true },
+     { t: "Algorithms", href: "pages/algorithms.html", ic: "key", kw: "hs256 rs256 es256 eddsa hmac rsa ecdsa none symmetric asymmetric", built: true }
+   ]},
+   { title: "Authentication", num: "02", items: [
+     { t: "Auth Flow", href: "pages/auth-flow.html", ic: "flow", kw: "login access refresh token bearer rotation expiration", built: true },
+     { t: "OAuth vs JWT", href: "pages/oauth-vs-jwt.html", ic: "compare", kw: "oauth2 openid connect session comparison", built: true },
+     { t: "OpenID Connect", href: "pages/openid-connect.html", ic: "lock", kw: "oidc id token authorization code pkce sso login", built: false }
+   ]},
+   { title: "Security", num: "03", items: [
+     { t: "Vulnerabilities", href: "pages/vulnerabilities.html", ic: "bug", kw: "none algorithm confusion kid jku jwk tampering weak secret replay xss csrf", built: true },
+     { t: "Best Practices", href: "pages/best-practices.html", ic: "shield", kw: "secrets rotation expiration httponly samesite cookie validation logout", built: false },
+     { t: "Attack Demos", href: "pages/playground.html#demos", ic: "target", kw: "none weak secret tamper expired signature mismatch sandbox", built: true }
+   ]},
+   { title: "Advanced", num: "04", items: [
+     { t: "JWE (Encryption)", href: "pages/jwe.html", ic: "lock", kw: "jwe encrypted confidentiality jws nested enc alg rsa-oaep a256gcm", built: true },
+     { t: "JWKS & Key Rotation", href: "pages/jwks-key-rotation.html", ic: "key", kw: "jwks kid key set rotation well-known discovery jwks_uri", built: true },
+     { t: "DPoP / Binding", href: "pages/dpop.html", ic: "shield", kw: "dpop sender constrained proof of possession cnf jkt mtls bearer replay", built: true },
+     { t: "Service-to-Service", href: "pages/service-to-service.html", ic: "flow", kw: "microservice m2m token exchange mtls propagation client credentials", built: false },
+     { t: "JWT Alternatives", href: "pages/jwt-alternatives.html", ic: "compare", kw: "paseto branca macaroons opaque tokens comparison", built: false }
+   ]},
+   { title: "Practice", num: "05", items: [
+     { t: "Playground", href: "pages/playground.html", ic: "play", kw: "encoder decoder verify sign hs256 interactive", built: true },
+     { t: "Libraries", href: "pages/libraries.html", ic: "code", kw: "node express flask django php spring go dotnet jsonwebtoken pyjwt", built: true },
+     { t: "Build Tutorial", href: "pages/build-tutorial.html", ic: "code", kw: "tutorial node express end to end implement login refresh", built: false }
+   ]},
+   { title: "Reference", num: "06", items: [
+     { t: "Resources", href: "pages/resources.html", ic: "link", kw: "owasp portswigger rfc 7519 jwt.io books github", built: true },
+     { t: "Roadmaps", href: "pages/roadmaps.html", ic: "map", kw: "beginner advanced api security learning path", built: true },
+     { t: "Glossary", href: "pages/glossary.html", ic: "book", kw: "terms definitions claim bearer jws jwe jwk nbf glossary", built: false },
+     { t: "FAQ", href: "pages/faq.html", ic: "book", kw: "questions answers common faq", built: false },
+     { t: "Cheat Sheet", href: "pages/cheat-sheet.html", ic: "layers", kw: "quick reference claims algorithms checklist cheatsheet", built: false }
+   ]}
+ ];
   const NAV_TOP = [
     { t: "Learn", href: "pages/structure.html" },
     { t: "Security", href: "pages/playground.html#demos" },
