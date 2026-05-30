@@ -37,7 +37,7 @@
   const GROUPS = [
     { title: "Get Started", num: "01", items: [
       { t: "Home", href: "index.html", ic: "book", kw: "introduction overview start", built: true },
-      { t: "What is JWT?", href: "pages/what-is-jwt.html", ic: "book", kw: "stateless session authentication lifecycle", built: false },
+      { t: "What is JWT?", href: "pages/what-is-jwt.html", ic: "book", kw: "stateless session authentication lifecycle", built: true },
       { t: "Token Structure", href: "pages/structure.html", ic: "layers", kw: "header payload signature base64url claims decode", built: true },
       { t: "Algorithms", href: "pages/algorithms.html", ic: "key", kw: "hs256 rs256 es256 eddsa hmac rsa ecdsa none symmetric asymmetric", built: false }
     ]},
