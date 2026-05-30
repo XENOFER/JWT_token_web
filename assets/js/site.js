@@ -39,7 +39,7 @@
       { t: "Home", href: "index.html", ic: "book", kw: "introduction overview start", built: true },
       { t: "What is JWT?", href: "pages/what-is-jwt.html", ic: "book", kw: "stateless session authentication lifecycle", built: true },
       { t: "Token Structure", href: "pages/structure.html", ic: "layers", kw: "header payload signature base64url claims decode", built: true },
-      { t: "Algorithms", href: "pages/algorithms.html", ic: "key", kw: "hs256 rs256 es256 eddsa hmac rsa ecdsa none symmetric asymmetric", built: false }
+      { t: "Algorithms", href: "pages/algorithms.html", ic: "key", kw: "hs256 rs256 es256 eddsa hmac rsa ecdsa none symmetric asymmetric", built: true }
     ]},
     { title: "Authentication", num: "02", items: [
       { t: "Auth Flow", href: "pages/auth-flow.html", ic: "flow", kw: "login access refresh token bearer rotation expiration", built: false },
