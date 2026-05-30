@@ -43,10 +43,10 @@
     ]},
     { title: "Authentication", num: "02", items: [
       { t: "Auth Flow", href: "pages/auth-flow.html", ic: "flow", kw: "login access refresh token bearer rotation expiration", built: true },
-      { t: "OAuth vs JWT", href: "pages/oauth-vs-jwt.html", ic: "compare", kw: "oauth2 openid connect session comparison", built: false }
+      { t: "OAuth vs JWT", href: "pages/oauth-vs-jwt.html", ic: "compare", kw: "oauth2 openid connect session comparison", built: true }
     ]},
     { title: "Security", num: "03", items: [
-      { t: "Vulnerabilities", href: "pages/vulnerabilities.html", ic: "bug", kw: "none algorithm confusion kid jku jwk tampering weak secret replay xss csrf", built: false },
+      { t: "Vulnerabilities", href: "pages/vulnerabilities.html", ic: "bug", kw: "none algorithm confusion kid jku jwk tampering weak secret replay xss csrf", built: true },
       { t: "Best Practices", href: "pages/best-practices.html", ic: "shield", kw: "secrets rotation expiration httponly samesite cookie validation logout", built: false },
       { t: "Attack Demos", href: "pages/playground.html#demos", ic: "target", kw: "none weak secret tamper expired signature mismatch sandbox", built: true }
     ]},
