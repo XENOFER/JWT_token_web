@@ -42,7 +42,7 @@
       { t: "Algorithms", href: "pages/algorithms.html", ic: "key", kw: "hs256 rs256 es256 eddsa hmac rsa ecdsa none symmetric asymmetric", built: true }
     ]},
     { title: "Authentication", num: "02", items: [
-      { t: "Auth Flow", href: "pages/auth-flow.html", ic: "flow", kw: "login access refresh token bearer rotation expiration", built: false },
+      { t: "Auth Flow", href: "pages/auth-flow.html", ic: "flow", kw: "login access refresh token bearer rotation expiration", built: true },
       { t: "OAuth vs JWT", href: "pages/oauth-vs-jwt.html", ic: "compare", kw: "oauth2 openid connect session comparison", built: false }
     ]},
     { title: "Security", num: "03", items: [
