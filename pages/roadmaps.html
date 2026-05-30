@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>JWT Learning Roadmaps — Beginner to Advanced · CipherToken</title>
+  <meta name="description" content="Three guided JWT learning paths: a beginner track to understand tokens, an API-security track to build them correctly, and an advanced/offensive track to assess and defend real systems. Each step links to a chapter or resource.">
+  <meta name="theme-color" content="#06080f">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="JWT Learning Roadmaps — Beginner to Advanced">
+  <meta property="og:description" content="Pick a track — Beginner, API Security, or Advanced — and follow an ordered path through the academy.">
+  <meta property="og:image" content="https://example.com/assets/img/og.svg">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="../assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Sora:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>.rm-step h3 a{color:var(--text);border-bottom:1px solid transparent;transition:border-color var(--t-fast)}.rm-step h3 a:hover{border-bottom-color:var(--accent);color:var(--accent)}.track-card .badge{margin-bottom:.5rem}</style>
+</head>
+<body>
+  <main class="docs">
+    <article class="content">
+      <div class="page-head">
+        <nav class="breadcrumb"><a href="../index.html">Home</a> / <span>Reference</span> / <span class="muted">Roadmaps</span></nav>
+        <span class="eyebrow" style="margin-top:.9rem">Chapter 13</span>
+        <h1>Learning roadmaps</h1>
+        <p class="lead">Same destination — confident, secure use of JSON Web Tokens — but the route depends on why you're here. Pick the track that matches your goal and follow it step by step. Every step links straight to the chapter or resource you need next.</p>
+      </div>
+
+      <div class="card-grid" style="margin-bottom:.5rem">
+        <a class="card hover track-card" href="#beginner">
+          <span class="badge info">Track 01</span>
+          <h3 style="font-size:1.1rem">Beginner</h3>
+          <p style="font-size:.9rem;color:var(--text-2);margin:0">Never used JWTs. Goal: read and reason about any token.</p>
+        </a>
+        <a class="card hover track-card" href="#api-security">
+          <span class="badge ok">Track 02</span>
+          <h3 style="font-size:1.1rem">API Security</h3>
+          <p style="font-size:.9rem;color:var(--text-2);margin:0">Building auth. Goal: ship a correct, hardened implementation.</p>
+        </a>
+        <a class="card hover track-card" href="#advanced">
+          <span class="badge danger">Track 03</span>
+          <h3 style="font-size:1.1rem">Advanced / Offensive</h3>
+          <p style="font-size:.9rem;color:var(--text-2);margin:0">Testing &amp; defending. Goal: assess real systems safely.</p>
+        </a>
+      </div>
+
+      <h2 id="beginner">Track 01 — Beginner</h2>
+      <p><strong>For:</strong> developers new to tokens. <strong>Outcome:</strong> you can open any JWT, explain its three parts, and describe how a login uses it.</p>
+      <div class="roadmap">
+        <div class="rm-step"><div class="rm-phase">Step 1 · Concept</div><h3><a href="what-is-jwt.html">What is a JWT?</a></h3><p>The core idea, the problem it solves, and sessions vs tokens.</p></div>
+        <div class="rm-step"><div class="rm-phase">Step 2 · Structure</div><h3><a href="structure.html">Token Structure</a></h3><p>Header, payload, signature — and why Base64URL isn't encryption. Decode one live.</p></div>
+        <div class="rm-step"><div class="rm-phase">Step 3 · Crypto basics</div><h3><a href="algorithms.html">Algorithms</a></h3><p>Symmetric vs asymmetric signing at a high level; what <code>HS256</code> and <code>RS256</code> mean.</p></div>
+        <div class="rm-step"><div class="rm-phase">Step 4 · Hands-on</div><h3><a href="playground.html">Playground</a></h3><p>Sign and decode your own tokens to make the ideas concrete.</p></div>
+        <div class="rm-step"><div class="rm-phase">Step 5 · The flow</div><h3><a href="auth-flow.html">Auth Flow</a></h3><p>Watch a token move through login, requests, and refresh.</p></div>
+      </div>
+
+      <h2 id="api-security">Track 02 — API Security</h2>
+      <p><strong>For:</strong> engineers adding JWT auth to an API. <strong>Outcome:</strong> a stateless auth setup that resists the common attacks.</p>
+      <div class="roadmap">
+        <div class="rm-step"><div class="rm-phase">Step 1 · Design</div><h3><a href="auth-flow.html">Auth Flow</a></h3><p>Access vs refresh tokens, rotation, expiry, and logout — the architecture decisions.</p></div>
+        <div class="rm-step"><div class="rm-phase">Step 2 · Choose crypto</div><h3><a href="algorithms.html">Algorithms</a></h3><p>Pick the right algorithm for your topology (one service vs many; EdDSA/ES256/RS256).</p></div>
+        <div class="rm-step"><div class="rm-phase">Step 3 · Harden</div><h3><a href="soon.html?t=Best%20Practices">Best Practices</a></h3><p>Strong keys, claim validation, secure cookies, rotation and revocation. <span class="muted">(coming soon)</span></p></div>
+        <div class="rm-step"><div class="rm-phase">Step 4 · Implement</div><h3><a href="libraries.html">Libraries</a></h3><p>Drop in the secure verification pattern for your language — Node, Python, PHP, Java, Go, or .NET.</p></div>
+        <div class="rm-step"><div class="rm-phase">Step 5 · Review</div><h3><a href="vulnerabilities.html">Vulnerabilities</a></h3><p>Audit your implementation against the catalogue's detection checklist.</p></div>
+      </div>
+
+      <h2 id="advanced">Track 03 — Advanced / Offensive</h2>
+      <p><strong>For:</strong> security engineers and pentesters. <strong>Outcome:</strong> you can find and demonstrate JWT flaws — and explain the fixes — on systems you're authorized to test.</p>
+      <div class="roadmap">
+        <div class="rm-step"><div class="rm-phase">Step 1 · Map the attacks</div><h3><a href="vulnerabilities.html">Vulnerabilities</a></h3><p>The full catalogue: algorithm, header-injection, claim, and storage flaws.</p></div>
+        <div class="rm-step"><div class="rm-phase">Step 2 · Practise safely</div><h3><a href="playground.html#demos">Attack Demos</a></h3><p>Run <code>none</code>, weak-secret, tampering and expiry against fabricated tokens.</p></div>
+        <div class="rm-step"><div class="rm-phase">Step 3 · Go deeper</div><h3><a href="algorithms.html#confusion">Algorithm confusion</a></h3><p>Understand RS→HS confusion and header-key abuse at the mechanism level.</p></div>
+        <div class="rm-step"><div class="rm-phase">Step 4 · Lab it</div><h3><a href="resources.html#labs">PortSwigger JWT labs</a></h3><p>Work through realistic, deliberately vulnerable targets in a legal sandbox.</p></div>
+        <div class="rm-step"><div class="rm-phase">Step 5 · Tooling</div><h3><a href="resources.html#tools">jwt_tool</a></h3><p>Add a dedicated toolkit for tampering and exploitation during authorized assessments.</p></div>
+        <div class="rm-step"><div class="rm-phase">Step 6 · Authoritative guidance</div><h3><a href="resources.html#security">RFC 8725 &amp; OWASP</a></h3><p>Ground your findings and recommendations in the Best Current Practices and OWASP guidance.</p></div>
+      </div>
+
+      <div class="callout tip" style="margin-top:1.8rem">
+        <svg class="c-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12l5 5 9-10"/></svg>
+        <p><span class="c-title">However you travel</span>The tracks overlap on purpose — builders benefit from the offensive view, and testers from the design view. Wherever you start, the <a class="link" href="playground.html">Playground</a> is the fastest way to turn theory into intuition.</p>
+      </div>
+
+      <hr class="divider">
+      <h2 id="next">Start your track</h2>
+      <div class="card-grid">
+        <a class="card hover topic-card" href="what-is-jwt.html">
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 5a2 2 0 012-2h12v16H6a2 2 0 00-2 2V5z"/><path d="M18 3v18"/></svg></span>
+          <h3>Begin at the start</h3><p>New to all this? Step 1 of the beginner track is one click away.</p>
+          <span class="more">What is a JWT? →</span>
+        </a>
+        <a class="card hover topic-card" href="resources.html">
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 15l6-6M10 6l1-1a4 4 0 016 6l-1 1M14 18l-1 1a4 4 0 01-6-6l1-1"/></svg></span>
+          <h3>Resources</h3><p>The specs, guides, labs, and tools each track points to.</p>
+          <span class="more">Browse resources →</span>
+        </a>
+      </div>
+    </article>
+    <div id="toc-slot"></div>
+  </main>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="../assets/js/jwt.js"></script>
+  <script src="../assets/js/site.js"></script>
+</body>
+</html>

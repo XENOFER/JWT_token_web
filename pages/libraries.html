@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>JWT Libraries &amp; Framework Examples · CipherToken</title>
+  <meta name="description" content="Implement JWT verification securely in Node.js, Python, PHP, Java, Go, and .NET. Trusted libraries per ecosystem, copy-ready verify snippets with the algorithm pinned and claims validated, and the common mistakes to avoid.">
+  <meta name="theme-color" content="#06080f">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="JWT Libraries & Framework Examples">
+  <meta property="og:description" content="Secure JWT verification in six languages — with pinned algorithms, claim checks, and the mistakes to avoid.">
+  <meta property="og:image" content="https://example.com/assets/img/og.svg">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="../assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Sora:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+  <main class="docs">
+    <article class="content">
+      <div class="page-head">
+        <nav class="breadcrumb"><a href="../index.html">Home</a> / <span>Practice</span> / <span class="muted">Libraries</span></nav>
+        <span class="eyebrow" style="margin-top:.9rem">Chapter 11</span>
+        <h1>Libraries &amp; framework examples</h1>
+        <p class="lead">You should almost never implement JWT signing or verification by hand — that's how the vulnerabilities in the previous chapter creep in. Reach for a maintained library, then use it correctly. Here's how, in six ecosystems, with the same defensive shape every time.</p>
+      </div>
+
+      <h2 id="universal">Rules that apply everywhere</h2>
+      <p>Languages differ; the secure recipe doesn't. Whatever stack you're on, a correct verification does all of this:</p>
+      <div class="callout tip">
+        <svg class="c-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12l5 5 9-10"/></svg>
+        <p><span class="c-title">The universal checklist</span>Use a maintained library · <strong>verify</strong>, never just decode · <strong>pin the algorithm(s)</strong> explicitly · validate <code>exp</code>/<code>nbf</code>, <code>aud</code> and <code>iss</code> · load keys from a trusted source (never the token's own headers) · keep secrets/keys in a vault, not in code · treat any failure as a hard reject.</p>
+      </div>
+      <div class="callout danger" style="margin-top:1rem">
+        <svg class="c-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M12 3l9 16H3z"/><path d="M12 9v4M12 16v.5"/></svg>
+        <p><span class="c-title">Don't roll your own</span>Hand-built base64 splitting and HMAC comparisons are exactly where <code>alg:none</code>, algorithm confusion, and timing bugs slip in. A vetted library closes those by default — see the <a class="link" href="vulnerabilities.html">Vulnerabilities</a> chapter for what you'd otherwise have to get right.</p>
+      </div>
+
+      <h2 id="libraries">Trusted libraries by ecosystem</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Ecosystem</th><th>Recommended</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td>Node.js</td><td><code>jsonwebtoken</code>, <code>jose</code></td><td><code>jose</code> covers modern JWS/JWE/JWK and EdDSA</td></tr>
+            <tr><td>Python</td><td><code>PyJWT</code>, <code>Authlib</code></td><td>Authlib for full OAuth/OIDC servers &amp; clients</td></tr>
+            <tr><td>PHP</td><td><code>firebase/php-jwt</code>, <code>lcobucci/jwt</code></td><td>lcobucci has a fluent, type-safe API</td></tr>
+            <tr><td>Java</td><td>Auth0 <code>java-jwt</code>, <code>jjwt</code>, Nimbus JOSE+JWT</td><td>Nimbus is the most feature-complete</td></tr>
+            <tr><td>Go</td><td><code>golang-jwt/jwt</code>, <code>lestrrat-go/jwx</code></td><td>jwx for JWK/JWS/JWE tooling</td></tr>
+            <tr><td>.NET</td><td><code>Microsoft.IdentityModel.Tokens</code></td><td><code>JsonWebTokenHandler</code> / <code>JwtSecurityTokenHandler</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="implement">Secure verification, by language</h2>
+      <p>Each example pins the algorithm and validates the standard claims. (APIs shift between versions — treat these as the shape to aim for and check your library's current docs.)</p>
+      <div data-tabs>
+        <div class="tabs" role="tablist">
+          <button class="tab active" data-tab="node" role="tab">Node.js</button>
+          <button class="tab" data-tab="py" role="tab">Python</button>
+          <button class="tab" data-tab="php" role="tab">PHP</button>
+          <button class="tab" data-tab="java" role="tab">Java</button>
+          <button class="tab" data-tab="go" role="tab">Go</button>
+          <button class="tab" data-tab="net" role="tab">.NET</button>
+        </div>
+
+        <div class="panel active" data-panel="node">
+          <p style="margin:.2rem 0 .6rem"><span class="badge info">jsonwebtoken</span> &nbsp;<code>npm i jsonwebtoken</code></p>
+          <pre data-file="verify.js"><code class="language-js">import jwt from 'jsonwebtoken';
+
+const claims = jwt.verify(token, PUBLIC_KEY, {
+  algorithms: ['RS256'],                 // pin — rejects none & alg confusion
+  issuer:   'https://auth.example.com',  // checks iss
+  audience: 'https://api.example.com',   // checks aud
+});
+// exp / nbf enforced automatically; throws on any failure</code></pre>
+          <div class="callout warn" style="margin-top:.8rem"><svg class="c-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M12 3l9 16H3z"/></svg><p><span class="c-title">Avoid</span><code>jwt.decode(token)</code> to read identity — it does <em>not</em> verify. Always pass <code>algorithms</code>.</p></div>
+        </div>
+
+        <div class="panel" data-panel="py">
+          <p style="margin:.2rem 0 .6rem"><span class="badge info">PyJWT</span> &nbsp;<code>pip install pyjwt[crypto]</code></p>
+          <pre data-file="verify.py"><code class="language-python">import jwt  # PyJWT — note: decode() DOES verify here
+
+claims = jwt.decode(
+    token,
+    PUBLIC_KEY,
+    algorithms=["RS256"],                  # pin
+    issuer="https://auth.example.com",
+    audience="https://api.example.com",
+    options={"require": ["exp", "iat"]},
+)</code></pre>
+          <div class="callout warn" style="margin-top:.8rem"><svg class="c-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M12 3l9 16H3z"/></svg><p><span class="c-title">Avoid</span><code>options={"verify_signature": False}</code> and omitting <code>algorithms</code> — both disable real protection.</p></div>
+        </div>
+
+        <div class="panel" data-panel="php">
+          <p style="margin:.2rem 0 .6rem"><span class="badge info">firebase/php-jwt</span> &nbsp;<code>composer require firebase/php-jwt</code></p>
+          <pre data-file="verify.php"><code class="language-php">use Firebase\JWT\JWT;
+use Firebase\JWT\Key;
+
+// Algorithm is pinned by the Key — the token's header can't override it
+$claims = JWT::decode($jwt, new Key($publicKeyPem, 'RS256'));
+
+if (($claims->iss ?? null) !== 'https://auth.example.com') {
+    throw new Exception('bad issuer');
+}</code></pre>
+          <div class="callout warn" style="margin-top:.8rem"><svg class="c-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M12 3l9 16H3z"/></svg><p><span class="c-title">Avoid</span>Trusting <code>$claims->iss</code>/<code>aud</code> without checking them, and accepting an algorithm derived from the token.</p></div>
+        </div>
+
+        <div class="panel" data-panel="java">
+          <p style="margin:.2rem 0 .6rem"><span class="badge info">Auth0 java-jwt</span> &nbsp;<code>com.auth0:java-jwt</code></p>
+          <pre data-file="Verify.java"><code class="language-java">Algorithm algorithm = Algorithm.RSA256(publicKey, null);
+
+JWTVerifier verifier = JWT.require(algorithm)   // pins RS256
+    .withIssuer("https://auth.example.com")
+    .withAudience("https://api.example.com")
+    .build();
+
+DecodedJWT jwt = verifier.verify(token);        // throws on failure</code></pre>
+          <div class="callout warn" style="margin-top:.8rem"><svg class="c-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M12 3l9 16H3z"/></svg><p><span class="c-title">Avoid</span><code>JWT.decode(token)</code> (no verification) and skipping <code>withIssuer</code>/<code>withAudience</code>.</p></div>
+        </div>
+
+        <div class="panel" data-panel="go">
+          <p style="margin:.2rem 0 .6rem"><span class="badge info">golang-jwt/jwt v5</span> &nbsp;<code>go get github.com/golang-jwt/jwt/v5</code></p>
+          <pre data-file="verify.go"><code class="language-go">token, err := jwt.Parse(raw, func(t *jwt.Token) (any, error) {
+    if _, ok := t.Method.(*jwt.SigningMethodRSA); !ok {   // pin the family
+        return nil, fmt.Errorf("unexpected alg: %v", t.Header["alg"])
+    }
+    return publicKey, nil
+},
+    jwt.WithValidMethods([]string{"RS256"}),
+    jwt.WithIssuer("https://auth.example.com"),
+    jwt.WithAudience("https://api.example.com"),
+)</code></pre>
+          <div class="callout warn" style="margin-top:.8rem"><svg class="c-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M12 3l9 16H3z"/></svg><p><span class="c-title">Avoid</span>Returning the key without checking <code>t.Method</code> — the classic Go algorithm-confusion bug.</p></div>
+        </div>
+
+        <div class="panel" data-panel="net">
+          <p style="margin:.2rem 0 .6rem"><span class="badge info">Microsoft.IdentityModel.Tokens</span></p>
+          <pre data-file="Verify.cs"><code class="language-clike">var handler = new JsonWebTokenHandler();
+
+var result = handler.ValidateToken(token, new TokenValidationParameters {
+    ValidateIssuerSigningKey = true,
+    IssuerSigningKey         = signingKey,
+    ValidAlgorithms          = new[] { "RS256" },   // pin
+    ValidIssuer              = "https://auth.example.com",
+    ValidAudience            = "https://api.example.com",
+    ValidateLifetime         = true,
+});
+if (!result.IsValid) throw result.Exception;</code></pre>
+          <div class="callout warn" style="margin-top:.8rem"><svg class="c-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M12 3l9 16H3z"/></svg><p><span class="c-title">Avoid</span>Setting <code>ValidateIssuer</code>/<code>ValidateAudience</code>/<code>ValidateLifetime</code> to <code>false</code>, or leaving <code>ValidAlgorithms</code> unset.</p></div>
+        </div>
+      </div>
+
+      <h2 id="mistakes">The mistakes every language shares</h2>
+      <div class="accordion">
+        <div class="acc-item">
+          <button class="acc-head">Decoding instead of verifying <span class="badge danger" style="margin-left:.4rem">Critical</span> <svg class="chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></button>
+          <div class="acc-body"><div class="acc-body-inner"><p>Reading claims from a decode call trusts attacker-controlled data. Always verify the signature first, and only then read claims.</p></div></div>
+        </div>
+        <div class="acc-item">
+          <button class="acc-head">Not pinning the algorithm <span class="badge danger" style="margin-left:.4rem">Critical</span> <svg class="chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></button>
+          <div class="acc-body"><div class="acc-body-inner"><p>Letting the token's header choose the algorithm enables <code>none</code> and RS→HS confusion. Pass an explicit allow-list every time.</p></div></div>
+        </div>
+        <div class="acc-item">
+          <button class="acc-head">Skipping claim validation <span class="badge warn" style="margin-left:.4rem">High</span> <svg class="chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></button>
+          <div class="acc-body"><div class="acc-body-inner"><p>A valid signature isn't enough. Verify <code>exp</code>/<code>nbf</code>, and check <code>aud</code> and <code>iss</code> so tokens can't be reused across services.</p></div></div>
+        </div>
+        <div class="acc-item">
+          <button class="acc-head">Hard-coded or weak secrets <span class="badge warn" style="margin-left:.4rem">High</span> <svg class="chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></button>
+          <div class="acc-body"><div class="acc-body-inner"><p>Secrets in source or short HS* keys are brute-forceable and leak via repos. Use long random keys from a secrets manager, and rotate them.</p></div></div>
+        </div>
+        <div class="acc-item">
+          <button class="acc-head">Swallowing verification errors <span class="badge warn" style="margin-left:.4rem">High</span> <svg class="chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></button>
+          <div class="acc-body"><div class="acc-body-inner"><p>A broad <code>try/catch</code> that logs and proceeds turns a rejection into an acceptance. Make verification failure stop the request.</p></div></div>
+        </div>
+      </div>
+
+      <hr class="divider">
+      <h2 id="next">Keep going</h2>
+      <div class="card-grid">
+        <a class="card hover topic-card" href="vulnerabilities.html">
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="8" y="7" width="8" height="11" rx="4"/><path d="M12 7V4M8 11H3M21 11h-5M8 16l-3 2M16 16l3 2"/></svg></span>
+          <h3>Vulnerabilities</h3><p>What each line of the checklist defends against, in detail.</p>
+          <span class="more">Study the flaws →</span>
+        </a>
+        <a class="card hover topic-card" href="playground.html">
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M10 9l5 3-5 3V9z" fill="currentColor"/></svg></span>
+          <h3>Playground</h3><p>Generate tokens to test your verification code against.</p>
+          <span class="more">Open playground →</span>
+        </a>
+      </div>
+    </article>
+    <div id="toc-slot"></div>
+  </main>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-clike.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markup-templating.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-php.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-java.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-go.min.js"></script>
+  <script src="../assets/js/jwt.js"></script>
+  <script src="../assets/js/site.js"></script>
+</body>
+</html>
