@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>What is a JSON Web Token? · CipherToken</title>
+  <meta name="description" content="A plain-English introduction to JSON Web Tokens (JWT): what they are, the stateless-authentication problem they solve, how sessions compare to tokens, and the full life of a token from login to expiry.">
+  <meta name="theme-color" content="#06080f">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="What is a JSON Web Token?">
+  <meta property="og:description" content="What JWTs are, the problem they solve, sessions vs tokens, and a token's full lifecycle — explained simply.">
+  <meta property="og:image" content="https://example.com/assets/img/og.svg">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="../assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Sora:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    /* Token-lifecycle sequence diagram (theme-aware) */
+    .seq { width: 100%; overflow-x: auto; }
+    .seq svg { min-width: 560px; }
+    .seq .lane { fill: var(--text); font-family: var(--f-display); font-weight: 700; font-size: 15px; }
+    .seq .life { stroke: var(--border-2); stroke-width: 1.5; stroke-dasharray: 4 5; }
+    .seq .actor { fill: var(--surface-2); stroke: var(--border-2); }
+    .seq .msg { stroke: var(--cyan); stroke-width: 1.8; fill: none; }
+    .seq .msg-back { stroke: var(--violet); stroke-width: 1.8; fill: none; }
+    .seq .lab { fill: var(--text-2); font-family: var(--f-mono); font-size: 12px; }
+    .seq .note { fill: var(--glass-2); stroke: var(--border-2); }
+    .seq .note-t { fill: var(--text); font-family: var(--f-body); font-size: 12px; font-weight: 600; }
+    .seq .num { fill: var(--accent); font-family: var(--f-mono); font-weight: 700; font-size: 12px; }
+    .good-bad { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .good-bad ul { margin: 0; padding-left: 1.1rem; }
+    .good-bad li { font-size: .92rem; }
+    .good-bad li + li { margin-top: .35rem; }
+    @media (max-width: 640px){ .good-bad { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <main class="docs">
+    <article class="content">
+      <div class="page-head">
+        <nav class="breadcrumb"><a href="../index.html">Home</a> / <span>Get Started</span> / <span class="muted">What is JWT?</span></nav>
+        <span class="eyebrow" style="margin-top:.9rem">Chapter 02</span>
+        <h1>What is a JSON Web Token?</h1>
+        <p class="lead">Before you can secure JWTs, it helps to know what one actually is and why it exists. In short: a JWT is a small, signed packet of JSON that lets a server trust a claim — like “this user is an admin” — without looking anything up. This chapter explains that idea from the ground up.</p>
+      </div>
+
+      <h2 id="definition">A token, defined</h2>
+      <p>A <strong>JSON Web Token</strong> — JWT, usually pronounced <em>“jot”</em> — is an open standard (<a class="link" href="https://datatracker.ietf.org/doc/html/rfc7519" target="_blank" rel="noopener">RFC 7519</a>) for transmitting information between two parties as a compact, URL-safe, <strong>digitally signed</strong> JSON object. That signature is the whole point: because the data is signed with a key, whoever receives the token can confirm two things — that the contents <strong>haven't been tampered with</strong>, and (with the right kind of key) <strong>who issued it</strong>.</p>
+      <p>“Compact” matters too. A JWT is just text, small enough to drop into an HTTP header or a URL, so it travels easily on every request. And it's <strong>self-contained</strong>: everything the server needs to make a trust decision is carried inside the token, not stored somewhere else.</p>
+      <div class="callout note">
+        <svg class="c-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="12" r="9"/><path d="M12 8v.5M12 11v5"/></svg>
+        <p><span class="c-title">In one sentence</span>A JWT is a signed JSON statement a server hands to a client, and later trusts on sight — because the signature proves it wasn't forged or altered.</p>
+      </div>
+
+      <h2 id="problem">The problem it solves: stateless authentication</h2>
+      <p>To see why JWTs caught on, picture the older approach — <strong>server-side sessions</strong>. When you log in, the server creates a session record (in memory, Redis, or a database) and sends your browser a random <em>session ID</em> in a cookie. On every following request, the server takes that ID, looks up the matching record, and only then knows who you are.</p>
+      <p>That works beautifully on a single server. It gets awkward at scale: if you run ten servers behind a load balancer, they all need to reach the same session store, or you have to pin each user to one machine. Every single request costs a lookup, and the server is forced to remember something about everyone currently logged in.</p>
+      <p>JWTs flip the model. Instead of the server <em>remembering</em> who you are, it <strong>signs a statement</strong> of who you are and hands it to you. On later requests you present that signed statement, and any server holding the verification key can check the signature and trust it — <strong>no shared store, no lookup</strong>. The state moved out of the server and into the token. That's what “stateless” means here.</p>
+
+      <h2 id="sessions-vs-tokens">Sessions vs. tokens at a glance</h2>
+      <p>Neither approach is universally “better” — they make different trade-offs. The big one is where trust lives and what you give up for it.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Aspect</th><th>Server-side session</th><th>JWT</th></tr></thead>
+          <tbody>
+            <tr><td>Where state lives</td><td>On the server (a store/DB)</td><td>Inside the token, on the client</td></tr>
+            <tr><td>How a request is validated</td><td>Look up the session ID</td><td>Verify the signature locally</td></tr>
+            <tr><td>Scaling across servers</td><td>Needs a shared store or sticky sessions</td><td>Any server with the key can verify</td></tr>
+            <tr><td>Per-request cost</td><td>A store/database read</td><td>A signature check (CPU only)</td></tr>
+            <tr><td>Revoking access</td><td>Delete the session — instant</td><td>Hard before expiry (needs a denylist)</td></tr>
+            <tr><td>Data exposure</td><td>Opaque ID; data stays server-side</td><td>Payload is readable by anyone holding it</td></tr>
+            <tr><td>Best when…</td><td>You need instant revocation &amp; central control</td><td>Stateless APIs, microservices, SSO</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="lifecycle">The life of a token</h2>
+      <p>From the moment you log in to the moment the token expires, a JWT follows the same arc. Here it is as a request-by-request exchange between a browser and a server:</p>
+      <div class="card seq" style="padding:1.2rem">
+        <svg viewBox="0 0 760 430" role="img" aria-label="Sequence diagram of a JWT's lifecycle from login to verified request">
+          <!-- actor headers -->
+          <rect class="actor" x="60" y="20" width="180" height="38" rx="10"/>
+          <text class="lane" x="150" y="44" text-anchor="middle">Client</text>
+          <rect class="actor" x="520" y="20" width="180" height="38" rx="10"/>
+          <text class="lane" x="610" y="44" text-anchor="middle">Server</text>
+          <!-- lifelines -->
+          <line class="life" x1="150" y1="58" x2="150" y2="418"/>
+          <line class="life" x1="610" y1="58" x2="610" y2="418"/>
+          <!-- arrowheads -->
+          <defs>
+            <marker id="ah" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0 0L7 3L0 6Z" style="fill:var(--cyan)"/></marker>
+            <marker id="ahb" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0 0L7 3L0 6Z" style="fill:var(--violet)"/></marker>
+          </defs>
+          <!-- 1: login -->
+          <text class="num" x="150" y="92">1</text>
+          <text class="lab" x="380" y="92" text-anchor="middle">POST /login  (credentials)</text>
+          <line class="msg" x1="150" y1="100" x2="604" y2="100" marker-end="url(#ah)"/>
+          <!-- server note: verify + sign -->
+          <rect class="note" x="520" y="116" width="190" height="42" rx="8"/>
+          <text class="note-t" x="615" y="133" text-anchor="middle">Verify user, then</text>
+          <text class="note-t" x="615" y="149" text-anchor="middle">sign a JWT</text>
+          <!-- 2: return token -->
+          <text class="num" x="600" y="186" text-anchor="end">2</text>
+          <text class="lab" x="380" y="186" text-anchor="middle">200 OK  ·  returns access token</text>
+          <line class="msg-back" x1="610" y1="194" x2="156" y2="194" marker-end="url(#ahb)"/>
+          <!-- client note: store -->
+          <rect class="note" x="55" y="210" width="190" height="42" rx="8"/>
+          <text class="note-t" x="150" y="227" text-anchor="middle">Store token</text>
+          <text class="note-t" x="150" y="243" text-anchor="middle">(cookie / memory)</text>
+          <!-- 3: request with bearer -->
+          <text class="num" x="150" y="280">3</text>
+          <text class="lab" x="380" y="280" text-anchor="middle">GET /api/profile  ·  Authorization: Bearer …</text>
+          <line class="msg" x1="150" y1="288" x2="604" y2="288" marker-end="url(#ah)"/>
+          <!-- server note: verify signature -->
+          <rect class="note" x="510" y="304" width="200" height="42" rx="8"/>
+          <text class="note-t" x="610" y="321" text-anchor="middle">Verify signature + claims</text>
+          <text class="note-t" x="610" y="337" text-anchor="middle">— no database lookup</text>
+          <!-- 4: response -->
+          <text class="num" x="600" y="374" text-anchor="end">4</text>
+          <text class="lab" x="380" y="374" text-anchor="middle">200 OK  ·  protected data</text>
+          <line class="msg-back" x1="610" y1="382" x2="156" y2="382" marker-end="url(#ahb)"/>
+        </svg>
+      </div>
+      <p>Spelled out as steps, the same lifecycle is:</p>
+      <div class="steps">
+        <div class="step"><div class="s-num">1</div><div class="s-body"><h4>Authenticate</h4><p>The user proves who they are — typically a username and password, or a third-party login.</p></div></div>
+        <div class="step"><div class="s-num">2</div><div class="s-body"><h4>Issue &amp; sign</h4><p>The server builds a token with claims like <code>sub</code>, <code>role</code>, and <code>exp</code>, then signs it with its key.</p></div></div>
+        <div class="step"><div class="s-num">3</div><div class="s-body"><h4>Store</h4><p>The client keeps the token — ideally in an <code>HttpOnly</code> cookie, or in memory. (The Best Practices chapter covers the trade-offs.)</p></div></div>
+        <div class="step"><div class="s-num">4</div><div class="s-body"><h4>Send on each request</h4><p>The token rides along in the <code>Authorization: Bearer &lt;token&gt;</code> header (or the cookie).</p></div></div>
+        <div class="step"><div class="s-num">5</div><div class="s-body"><h4>Verify</h4><p>The server checks the signature and the claims (is it expired? is it for me?). If everything holds, the request is trusted — no lookup needed.</p></div></div>
+        <div class="step"><div class="s-num">6</div><div class="s-body"><h4>Expire &amp; refresh</h4><p>Short-lived access tokens expire quickly; a longer-lived <em>refresh token</em> is exchanged for a fresh one when needed.</p></div></div>
+      </div>
+
+      <h2 id="in-practice">What it looks like in practice</h2>
+      <p>On the wire, sending a token is nothing more than an HTTP header:</p>
+      <pre data-file="request.http"><code class="language-bash">GET /api/profile HTTP/1.1
+Host: api.example.com
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMDI0In0.…</code></pre>
+      <p>And verifying it on the server is a single call — notice there's no session store in sight, and that the expected algorithm is pinned explicitly (a habit the Security chapters will explain):</p>
+      <pre data-file="verify.js"><code class="language-js">import jwt from 'jsonwebtoken';
+
+// Runs on every protected request — stateless, no DB read
+function authenticate(req) {
+  const header = req.headers.authorization || '';
+  const token = header.split(' ')[1];          // "Bearer &lt;jwt&gt;"
+
+  try {
+    const claims = jwt.verify(token, PUBLIC_KEY, { algorithms: ['RS256'] });
+    return claims;        // trusted: { sub, role, exp, ... }
+  } catch (err) {
+    throw new Error('Invalid or expired token');
+  }
+}</code></pre>
+
+      <h3 id="sample">…and here's a real one</h3>
+      <p>This token was just signed in your browser. The colours mark its three parts — head over to <a class="link" href="structure.html">Token Structure</a> to take it apart.</p>
+      <div class="token-vis" id="wj-token" style="margin-bottom:.7rem">loading…</div>
+      <div class="tok-legend">
+        <span><i class="lh"></i>Header</span><span><i class="lp"></i>Payload</span><span><i class="ls"></i>Signature</span>
+      </div>
+
+      <h2 id="good-bad">Where JWTs shine — and where they don't</h2>
+      <p>JWTs are a tool, not a default. They're a great fit for some jobs and a poor one for others.</p>
+      <div class="good-bad">
+        <div class="vs-col good">
+          <div class="vs-head"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12l5 5 9-10"/></svg>Great for</div>
+          <div style="padding:1rem"><ul>
+            <li>Stateless REST / GraphQL APIs</li>
+            <li>Microservices passing identity between each other</li>
+            <li>Single sign-on and OpenID Connect</li>
+            <li>Short-lived access tokens</li>
+            <li>Serverless, where there's no session store</li>
+          </ul></div>
+        </div>
+        <div class="vs-col bad">
+          <div class="vs-head"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 6l12 12M18 6L6 18"/></svg>Be careful with</div>
+          <div style="padding:1rem"><ul>
+            <li>Anything needing instant logout or ban</li>
+            <li>Storing sensitive or large data (the payload is readable)</li>
+            <li>Treating one long-lived token as a whole session</li>
+            <li>Rolling your own signing or validation logic</li>
+          </ul></div>
+        </div>
+      </div>
+      <div class="callout warn" style="margin-top:1rem">
+        <svg class="c-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M12 3l9 16H3z"/><path d="M12 9v4M12 16v.5"/></svg>
+        <p><span class="c-title">The revocation catch</span>A signed token stays valid until it expires — you can't “delete” it the way you delete a session. Plan around this: keep access tokens short-lived, use refresh tokens, and for true revocation keep a denylist keyed by the <code>jti</code> claim.</p>
+      </div>
+
+      <h2 id="analogy">A quick analogy</h2>
+      <p>Think of a festival wristband. At the gate, staff check your ticket <em>once</em> — that's logging in. In return you get a tamper-evident wristband: that's your signed token. Inside the festival, nobody walks you back to the box office; staff just glance at the wristband and let you through, which is the server verifying the signature instead of hitting the database. Anyone can <em>see</em> what tier your band is (the payload is readable), but the hologram means they can't <em>forge</em> one. And it only works until the festival ends — the token's <code>exp</code>.</p>
+      <div class="callout tip" style="margin-top:1rem">
+        <svg class="c-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12l5 5 9-10"/></svg>
+        <p><span class="c-title">Takeaway</span>A JWT trades a database lookup for a signature check. That's a great deal for scale and simplicity — as long as you respect what the signature does (proves integrity) and doesn't do (provide secrecy or easy revocation).</p>
+      </div>
+
+      <hr class="divider">
+      <h2 id="next">Keep going</h2>
+      <div class="card-grid">
+        <a class="card hover topic-card" href="structure.html">
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></svg></span>
+          <h3>Token Structure</h3><p>Open a token up: header, payload, signature, and what Base64URL really does.</p>
+          <span class="more">Decode a token →</span>
+        </a>
+        <a class="card hover topic-card" href="playground.html">
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M10 9l5 3-5 3V9z" fill="currentColor"/></svg></span>
+          <h3>Playground</h3><p>Sign and verify your own tokens with a real engine, then try the attack demos.</p>
+          <span class="more">Open playground →</span>
+        </a>
+      </div>
+    </article>
+    <div id="toc-slot"></div>
+  </main>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-clike.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+  <script src="../assets/js/jwt.js"></script>
+  <script src="../assets/js/site.js"></script>
+  <script>
+    /* Live sample token */
+    (function () {
+      const J = window.JWT; if (!J) return;
+      (async function () {
+        const iat = Math.floor(Date.now() / 1000);
+        const token = await J.sign({ alg: "HS256", typ: "JWT" },
+          { sub: "1024", name: "Ada Lovelace", role: "user", iat: iat, exp: iat + 3600 },
+          "a-demo-secret-key");
+        const el = document.getElementById("wj-token");
+        if (el) el.innerHTML = J.colorize(token);
+      })();
+    })();
+  </script>
+</body>
+</html>
