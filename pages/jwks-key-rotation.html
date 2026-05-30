@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>JWKS &amp; Key Rotation — Publishing and Rotating JWT Keys · CipherToken</title>
+  <meta name="description" content="How JWT verifiers find the right public key: JSON Web Key Sets (JWKS), the kid header, and the /.well-known discovery endpoints. Plus zero-downtime key rotation with an overlap window, caching, and the common mistakes.">
+  <meta name="theme-color" content="#06080f">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="JWKS & Key Rotation">
+  <meta property="og:description" content="Key sets, the kid header, discovery endpoints, and rotating signing keys without breaking valid tokens.">
+  <meta property="og:image" content="https://example.com/assets/img/og.svg">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="../assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Sora:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+  <main class="docs">
+    <article class="content">
+      <div class="page-head">
+        <nav class="breadcrumb"><a href="../index.html">Home</a> / <span>Advanced</span> / <span class="muted">JWKS &amp; Key Rotation</span></nav>
+        <span class="eyebrow" style="margin-top:.9rem">Advanced · Keys</span>
+        <h1>JWKS &amp; key rotation</h1>
+        <p class="lead">With asymmetric signing, every verifier needs the issuer's <em>public</em> key — and that key shouldn't live forever. This chapter covers how keys are published as a JWKS, how a token points to the right one with <code>kid</code>, and how to rotate keys without invalidating tokens that are still in flight.</p>
+      </div>
+
+      <h2 id="jwks">What is a JWKS?</h2>
+      <p>A <strong>JSON Web Key Set</strong> is simply a JSON document with a <code>keys</code> array, where each entry is a public key in JWK form. Issuers publish it; verifiers fetch and cache it, then pick whichever key matches the token they're checking.</p>
+      <pre data-file="jwks.json"><code class="language-json">{
+  "keys": [
+    {
+      "kty": "RSA",
+      "use": "sig",
+      "kid": "2024-05-key-a",
+      "alg": "RS256",
+      "n": "0vx7agoebGcQSuuPiLJXZ...",
+      "e": "AQAB"
+    },
+    {
+      "kty": "EC",
+      "use": "sig",
+      "kid": "2024-05-key-b",
+      "crv": "P-256",
+      "x": "f83OJ3D2xF1Bg8vub9tLe...",
+      "y": "x_FEzRu9m36HLN_tue659..."
+    }
+  ]
+}</code></pre>
+      <p>Note these are <strong>public</strong> keys only — safe to expose. Each carries a <code>kid</code> (key ID) so a token can name exactly which one signed it, and a <code>use</code> (<code>sig</code> for signing) so the right key is chosen for the right job.</p>
+
+      <h2 id="kid">The <code>kid</code> link</h2>
+      <p>The token's header carries a matching <code>kid</code>:</p>
+      <pre data-file="header.json"><code class="language-json">{ "alg": "RS256", "typ": "JWT", "kid": "2024-05-key-a" }</code></pre>
+      <p>The verifier reads <code>kid</code>, looks up that key in the JWKS, and verifies with it. This indirection is what makes rotation possible: multiple keys can coexist, each addressable by ID.</p>
+      <div class="callout danger" style="margin-top:1rem">
+        <svg class="c-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M12 3l9 16H3z"/><path d="M12 9v4M12 16v.5"/></svg>
+        <p><span class="c-title">Treat <code>kid</code> as an opaque lookup key</span>Match it against your known key set only. Never use it to build a file path or SQL query, and never fetch a key from a URL the token supplies — those are the <a class="link" href="vulnerabilities.html#v-kid"><code>kid</code> / <code>jku</code> injection</a> attacks.</p>
+      </div>
+
+      <h2 id="discovery">Discovery endpoints</h2>
+      <p>So verifiers don't hard-code keys, issuers expose the JWKS at a stable URL — conventionally <code>/.well-known/jwks.json</code>. In OpenID Connect, the discovery document at <code>/.well-known/openid-configuration</code> advertises that location via its <code>jwks_uri</code> field. A verifier fetches the discovery doc once, learns the <code>jwks_uri</code>, then pulls keys from there.</p>
+      <pre data-file="discovery.http"><code class="language-bash">GET /.well-known/openid-configuration HTTP/1.1
+Host: auth.example.com
+
+→ { "issuer": "https://auth.example.com",
+    "jwks_uri": "https://auth.example.com/.well-known/jwks.json",
+    ... }</code></pre>
+
+      <h2 id="rotation">Rotating without downtime</h2>
+      <p>Keys should rotate periodically — to limit the damage if one ever leaks, and as basic hygiene. The trick is doing it without rejecting tokens that were signed with the old key and haven't expired yet. The answer is an <strong>overlap window</strong>:</p>
+      <div class="steps">
+        <div class="step"><div class="s-num">1</div><div class="s-body"><h4>Publish the new key</h4><p>Add the new public key (with a fresh <code>kid</code>) to the JWKS <em>alongside</em> the current one. Don't sign with it yet.</p></div></div>
+        <div class="step"><div class="s-num">2</div><div class="s-body"><h4>Let verifiers pick it up</h4><p>Wait for caches to refresh so verifiers know about both keys.</p></div></div>
+        <div class="step"><div class="s-num">3</div><div class="s-body"><h4>Switch signing</h4><p>Start signing new tokens with the new key. Tokens now arrive under both <code>kid</code>s — and both verify.</p></div></div>
+        <div class="step"><div class="s-num">4</div><div class="s-body"><h4>Drain, then retire</h4><p>Keep the old key in the JWKS until every token it signed has expired, then remove it.</p></div></div>
+      </div>
+      <div class="callout warn" style="margin-top:1rem">
+        <svg class="c-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M12 3l9 16H3z"/><path d="M12 9v4M12 16v.5"/></svg>
+        <p><span class="c-title">Don't remove the old key too early</span>If you pull it before its tokens expire, valid sessions break. The overlap must be at least as long as your access-token lifetime.</p>
+      </div>
+
+      <h2 id="caching">Caching &amp; unknown keys</h2>
+      <p>Verifiers should <strong>cache the JWKS</strong>, not fetch it on every request — otherwise your auth server becomes a bottleneck (and a denial-of-service target). The standard pattern: cache keys, and if a token arrives with an unknown <code>kid</code>, refresh the set <em>once</em> (rate-limited) to pick up a freshly rotated key, then verify. Good libraries do this for you.</p>
+      <pre data-file="verify-jwks.js"><code class="language-js">import * as jose from 'jose';
+
+// Fetches, caches, and refreshes the key set automatically;
+// selects the key matching the token's "kid"
+const JWKS = jose.createRemoteJWKSet(
+  new URL('https://auth.example.com/.well-known/jwks.json')
+);
+
+const { payload } = await jose.jwtVerify(token, JWKS, {
+  algorithms: ['RS256'],
+  issuer:   'https://auth.example.com',
+  audience: 'https://api.example.com',
+});</code></pre>
+
+      <h2 id="pitfalls">Pitfalls</h2>
+      <div class="callout warn">
+        <svg class="c-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M12 3l9 16H3z"/><path d="M12 9v4M12 16v.5"/></svg>
+        <p><span class="c-title">Watch out for</span>Fetching the JWKS per request (latency + DoS) · trusting a token-supplied key URL (<code>jku</code>) instead of your configured endpoint · removing a retired key before its tokens expire · omitting <code>kid</code> so you can't rotate cleanly · forgetting to still pin <code>algorithms</code> when verifying against a JWKS.</p>
+      </div>
+
+      <hr class="divider">
+      <h2 id="next">Keep going</h2>
+      <div class="card-grid">
+        <a class="card hover topic-card" href="vulnerabilities.html#header-injection">
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="8" y="7" width="8" height="11" rx="4"/><path d="M12 7V4M8 11H3M21 11h-5"/></svg></span>
+          <h3>Header-injection attacks</h3><p>How <code>kid</code>, <code>jku</code> and <code>jwk</code> become weapons when keys are trusted blindly.</p>
+          <span class="more">See the attacks →</span>
+        </a>
+        <a class="card hover topic-card" href="algorithms.html">
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="8" cy="8" r="4"/><path d="M11 11l9 9"/></svg></span>
+          <h3>Algorithms</h3><p>Why asymmetric keys make publishing a public JWKS possible in the first place.</p>
+          <span class="more">Review signing →</span>
+        </a>
+      </div>
+    </article>
+    <div id="toc-slot"></div>
+  </main>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-clike.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+  <script src="../assets/js/jwt.js"></script>
+  <script src="../assets/js/site.js"></script>
+</body>
+</html>

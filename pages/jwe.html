@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>JWE — Encrypted JSON Web Tokens · CipherToken</title>
+  <meta name="description" content="JSON Web Encryption (JWE) gives JWTs confidentiality, not just integrity. How JWE differs from signed JWS, its five-part structure, the two-layer key-management and content-encryption algorithms, when you actually need it, and how to use it safely.">
+  <meta name="theme-color" content="#06080f">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="JWE — Encrypted JSON Web Tokens">
+  <meta property="og:description" content="When a signature isn't enough: encrypting tokens with JWE, its five parts, algorithms, and pitfalls.">
+  <meta property="og:image" content="https://example.com/assets/img/og.svg">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="../assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Sora:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .jwe5 .tok.k{color:#ffb86b}.jwe5 .tok.iv{color:#7aa2ff}.jwe5 .tok.ct{color:var(--t-payload)}.jwe5 .tok.tag{color:var(--t-sig)}.jwe5 .tok.hd{color:var(--t-header)}
+    .jwe5 .tok-legend i.lk{background:#ffb86b}.jwe5 .tok-legend i.liv{background:#7aa2ff}.jwe5 .tok-legend i.lct{background:var(--t-payload)}.jwe5 .tok-legend i.ltag{background:var(--t-sig)}.jwe5 .tok-legend i.lhd{background:var(--t-header)}
+  </style>
+</head>
+<body>
+  <main class="docs">
+    <article class="content">
+      <div class="page-head">
+        <nav class="breadcrumb"><a href="../index.html">Home</a> / <span>Advanced</span> / <span class="muted">JWE</span></nav>
+        <span class="eyebrow" style="margin-top:.9rem">Advanced · Encryption</span>
+        <h1>JWE — encrypted tokens</h1>
+        <p class="lead">Everything so far has been about <em>signed</em> tokens (JWS), where the payload is readable by anyone. Sometimes you need the opposite: a token whose contents are <strong>secret</strong>. That's JSON Web Encryption — JWE — the encrypted sibling of the JWT family.</p>
+      </div>
+
+      <h2 id="jws-vs-jwe">JWS vs. JWE</h2>
+      <p>The tokens you've decoded until now are <strong>JWS</strong> (JSON Web Signature). A signature proves a token wasn't altered and who issued it — but the payload is only Base64URL-encoded, so anyone holding the token can read it. <strong>JWE</strong> encrypts the payload instead, so only a holder of the right key can read it at all.</p>
+      <div class="vs-grid">
+        <div class="vs-col good">
+          <div class="vs-head"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12l5 5 9-10"/></svg>JWS — signed</div>
+          <div style="padding:1rem"><p style="margin:0;font-size:.9rem">Integrity + authenticity. Payload is <strong>readable</strong>. Three parts. This is the default “JWT” most systems use.</p></div>
+        </div>
+        <div class="vs-col" style="border-color:rgba(124,140,255,.4)">
+          <div class="vs-head" style="color:var(--indigo);background:rgba(124,140,255,.12)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/></svg>JWE — encrypted</div>
+          <div style="padding:1rem"><p style="margin:0;font-size:.9rem">Confidentiality (and integrity). Payload is <strong>unreadable</strong> without the key. Five parts.</p></div>
+        </div>
+      </div>
+      <div class="callout note" style="margin-top:1rem">
+        <svg class="c-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="12" r="9"/><path d="M12 8v.5M12 11v5"/></svg>
+        <p><span class="c-title">Three transformations, don't mix them up</span><strong>Encoding</strong> (Base64URL) is reversible by anyone. <strong>Signing</strong> (JWS) proves integrity but reveals content. <strong>Encrypting</strong> (JWE) hides content. They solve different problems.</p>
+      </div>
+
+      <h2 id="structure">Five parts, not three</h2>
+      <p>Where a JWS joins three segments with dots, a compact JWE joins <strong>five</strong>:</p>
+      <div class="token-vis jwe5">
+        <span class="tok hd">header</span><span class="tok dot">.</span><span class="tok k">encrypted&nbsp;key</span><span class="tok dot">.</span><span class="tok iv">iv</span><span class="tok dot">.</span><span class="tok ct">ciphertext</span><span class="tok dot">.</span><span class="tok tag">tag</span>
+      </div>
+      <div class="tok-legend jwe5">
+        <span><i class="lhd"></i>Header (alg + enc)</span>
+        <span><i class="lk"></i>Encrypted key</span>
+        <span><i class="liv"></i>Initialization vector</span>
+        <span><i class="lct"></i>Ciphertext</span>
+        <span><i class="ltag"></i>Auth tag</span>
+      </div>
+      <p>Briefly: the <strong>header</strong> names the algorithms; the <strong>encrypted key</strong> is the per-message content key wrapped for the recipient; the <strong>IV</strong> seeds the cipher; the <strong>ciphertext</strong> is your encrypted payload; and the <strong>authentication tag</strong> lets the recipient detect tampering. Decryption needs the recipient's key — there's nothing readable to decode by hand.</p>
+
+      <h2 id="algorithms">Two layers of algorithms</h2>
+      <p>JWE uses two algorithm choices working together. The header's <code>alg</code> covers <strong>key management</strong> (how the content-encryption key is delivered), and <code>enc</code> covers <strong>content encryption</strong> (the actual symmetric cipher over your payload).</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Field</th><th>Job</th><th>Common values</th></tr></thead>
+          <tbody>
+            <tr><td><code>alg</code></td><td>Key management — wrap/derive the content key</td><td><code>RSA-OAEP-256</code>, <code>ECDH-ES</code>, <code>A256KW</code>, <code>dir</code></td></tr>
+            <tr><td><code>enc</code></td><td>Content encryption — encrypt the payload</td><td><code>A256GCM</code>, <code>A128GCM</code>, <code>A256CBC-HS512</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p><code>dir</code> means a pre-shared symmetric key is used directly (no wrapped key segment); <code>ECDH-ES</code> derives a key via an ephemeral elliptic-curve exchange. The AEAD ciphers (the <code>GCM</code> family) provide both confidentiality and integrity in one step.</p>
+
+      <h2 id="when">When you actually need it</h2>
+      <p>Most systems don't need JWE — and reaching for it is often a sign that something sensitive shouldn't be in the token at all. Prefer keeping secrets server-side and carrying only non-sensitive claims (see <a class="link" href="structure.html#base64url">Structure</a>). Genuine JWE use cases include:</p>
+      <ul>
+        <li>A token <em>must</em> travel through an untrusted intermediary yet carry confidential claims.</li>
+        <li>You're in an ecosystem (some OIDC / FAPI profiles) that mandates encrypted tokens.</li>
+        <li>You need both secrecy and proof of origin — handled with a <strong>nested JWT</strong>.</li>
+      </ul>
+      <div class="callout tip" style="margin-top:1rem">
+        <svg class="c-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12l5 5 9-10"/></svg>
+        <p><span class="c-title">Nested JWT = sign, then encrypt</span>For confidentiality <em>and</em> authenticity, first sign the claims as a JWS, then encrypt that JWS as the payload of a JWE. The recipient decrypts, then verifies the inner signature.</p>
+      </div>
+
+      <h2 id="example">Using JWE in practice</h2>
+      <p>With a modern library the two layers are just parameters. Here's the shape with <code>jose</code> in Node — encrypting, then decrypting and validating claims in one step:</p>
+      <pre data-file="jwe.js"><code class="language-js">import * as jose from 'jose';
+
+// Encrypt → compact JWE (five parts)
+const jwe = await new jose.EncryptJWT({ sub: '1024', role: 'user' })
+  .setProtectedHeader({ alg: 'RSA-OAEP-256', enc: 'A256GCM' })
+  .setIssuer('https://auth.example.com')
+  .setAudience('https://api.example.com')
+  .setExpirationTime('15m')
+  .encrypt(recipientPublicKey);
+
+// Decrypt + validate claims (claims still matter after decryption!)
+const { payload } = await jose.jwtDecrypt(jwe, recipientPrivateKey, {
+  issuer:   'https://auth.example.com',
+  audience: 'https://api.example.com',
+});</code></pre>
+
+      <h2 id="pitfalls">Pitfalls</h2>
+      <div class="callout warn">
+        <svg class="c-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M12 3l9 16H3z"/><path d="M12 9v4M12 16v.5"/></svg>
+        <p><span class="c-title">Watch out for</span>Assuming encryption replaces validation — still check <code>exp</code>/<code>aud</code>/<code>iss</code> after decrypting · confusing JWE with signing (it's heavier and adds key-management complexity) · mismatched <code>alg</code>/<code>enc</code> support between parties · putting sensitive data in a plain JWS thinking the signature hides it (it doesn't).</p>
+      </div>
+
+      <hr class="divider">
+      <h2 id="next">Keep going</h2>
+      <div class="card-grid">
+        <a class="card hover topic-card" href="jwks-key-rotation.html">
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="8" cy="8" r="4"/><path d="M11 11l9 9M17 17l2-2"/></svg></span>
+          <h3>JWKS &amp; Key Rotation</h3><p>How recipients find the right key — and rotate keys without breaking tokens.</p>
+          <span class="more">Manage keys →</span>
+        </a>
+        <a class="card hover topic-card" href="structure.html">
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></svg></span>
+          <h3>Token Structure</h3><p>Revisit why a signed payload is readable — the reason JWE exists.</p>
+          <span class="more">Back to basics →</span>
+        </a>
+      </div>
+    </article>
+    <div id="toc-slot"></div>
+  </main>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-clike.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+  <script src="../assets/js/jwt.js"></script>
+  <script src="../assets/js/site.js"></script>
+</body>
+</html>

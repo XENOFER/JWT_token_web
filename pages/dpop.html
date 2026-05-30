@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DPoP &amp; Sender-Constrained Tokens · CipherToken</title>
+  <meta name="description" content="Bearer tokens work for anyone who holds them. Sender-constrained tokens bind a token to its holder's key so a stolen token is useless. How DPoP proof-of-possession works (cnf/jkt and the DPoP proof JWT), mTLS-bound tokens, and when to use each.">
+  <meta name="theme-color" content="#06080f">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="DPoP & Sender-Constrained Tokens">
+  <meta property="og:description" content="Bind a token to its holder so theft alone isn't enough — DPoP proof-of-possession and mTLS, explained.">
+  <meta property="og:image" content="https://example.com/assets/img/og.svg">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="../assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Sora:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+  <main class="docs">
+    <article class="content">
+      <div class="page-head">
+        <nav class="breadcrumb"><a href="../index.html">Home</a> / <span>Advanced</span> / <span class="muted">DPoP</span></nav>
+        <span class="eyebrow" style="margin-top:.9rem">Advanced · Token binding</span>
+        <h1>DPoP &amp; sender-constrained tokens</h1>
+        <p class="lead">A bearer token has one fatal property: whoever <em>holds</em> it can use it. Steal one and you're in. <strong>Sender-constraining</strong> fixes that by binding a token to a key only the legitimate client controls — so a stolen token, on its own, is worthless. Two mechanisms do this: DPoP and mTLS.</p>
+      </div>
+
+      <h2 id="bearer-problem">The bearer problem</h2>
+      <p>Throughout the auth flow, the access token is a <strong>bearer</strong> credential: the server checks the token is valid and grants access, with no proof that the sender is the party it was issued to. That's why a token leaked via XSS, a proxy log, or a misrouted request can be replayed by an attacker for as long as it's valid (see <a class="link" href="vulnerabilities.html#v-replay">token replay</a>). Sender-constraining adds exactly that missing proof.</p>
+
+      <h2 id="dpop">DPoP — proof of possession</h2>
+      <p><strong>DPoP</strong> (Demonstrating Proof-of-Possession, RFC 9449) is an application-layer scheme. The client generates its own key pair and proves, on every request, that it holds the private key. The access token is <strong>bound to that key</strong>, so it only works when accompanied by a matching proof.</p>
+      <p>The binding lives in a confirmation claim, <code>cnf</code>, carrying the JWK thumbprint (<code>jkt</code>) of the client's public key:</p>
+      <pre data-file="bound-access-token.json"><code class="language-json">{
+  "sub": "1024",
+  "aud": "https://api.example.com",
+  "exp": 1735689600,
+  "cnf": { "jkt": "0ZcOCORZNYy-DWpqq30jZyJGHTN0d2HglBV3uiguA4I" }
+}</code></pre>
+      <p>On each call, the client sends a small signed JWT — the <strong>DPoP proof</strong> — in a <code>DPoP</code> header. It's signed by the client's private key and ties the request to a specific method and URL:</p>
+      <pre data-file="dpop-proof.json"><code class="language-json">// header
+{ "typ": "dpop+jwt", "alg": "ES256", "jwk": { /* client public key */ } }
+// payload
+{
+  "htm": "GET",                       // HTTP method
+  "htu": "https://api.example.com/orders",  // HTTP URI
+  "iat": 1735689000,
+  "jti": "f9a1...unique-per-proof"
+}</code></pre>
+
+      <h2 id="how-dpop-works">How a DPoP request checks out</h2>
+      <div class="steps">
+        <div class="step"><div class="s-num">1</div><div class="s-body"><h4>Client holds a key pair</h4><p>Generated locally; the private key never leaves the client.</p></div></div>
+        <div class="step"><div class="s-num">2</div><div class="s-body"><h4>Token is bound</h4><p>At issuance, the access token gets a <code>cnf.jkt</code> equal to the thumbprint of the client's public key.</p></div></div>
+        <div class="step"><div class="s-num">3</div><div class="s-body"><h4>Each request carries a fresh proof</h4><p>The client signs a DPoP proof JWT for that exact method + URL and attaches it.</p></div></div>
+        <div class="step"><div class="s-num">4</div><div class="s-body"><h4>Server verifies the pair</h4><p>It checks the proof's signature, that <code>htm</code>/<code>htu</code> match the request, and that the proof key's thumbprint equals the token's <code>cnf.jkt</code>. A stolen token without the private key fails here.</p></div></div>
+      </div>
+
+      <h2 id="mtls">mTLS-bound tokens</h2>
+      <p>The other approach binds the token at the <strong>transport layer</strong>. With mutual TLS (RFC 8705), the client authenticates its TLS connection with a certificate, and the access token records that certificate's thumbprint — again under <code>cnf</code>, this time as <code>x5t#S256</code>. The resource server only honours the token over a TLS connection presenting the same certificate.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th></th><th>DPoP</th><th>mTLS-bound</th></tr></thead>
+          <tbody>
+            <tr><td>Layer</td><td>Application (HTTP header)</td><td>Transport (TLS)</td></tr>
+            <tr><td>Binding</td><td><code>cnf.jkt</code> (key thumbprint)</td><td><code>cnf["x5t#S256"]</code> (cert thumbprint)</td></tr>
+            <tr><td>Per-request work</td><td>Sign a proof JWT</td><td>Handled by the TLS layer</td></tr>
+            <tr><td>Best for</td><td>SPAs, mobile, public clients</td><td>Server-to-server, infra you control</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="when">When to use it</h2>
+      <p>Sender-constraining adds real complexity, so reserve it for where token theft is both likely and costly: public clients exposed to XSS (single-page and mobile apps), high-value or financial-grade APIs (FAPI profiles), and any system where a replayed token would be a serious incident. For a typical first-party app with short-lived tokens and good XSS hygiene, plain bearer tokens are usually acceptable.</p>
+
+      <h2 id="pitfalls">Pitfalls</h2>
+      <div class="callout warn">
+        <svg class="c-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M12 3l9 16H3z"/><path d="M12 9v4M12 16v.5"/></svg>
+        <p><span class="c-title">Watch out for</span>DPoP <strong>proof replay</strong> — bind proofs to method/URL, enforce a short <code>iat</code> window, and track <code>jti</code> (often with a server nonce) so a captured proof can't be reused · clock skew on the proof's freshness check · treating DPoP as a TLS replacement (you still need TLS) · the added key-management burden on clients.</p>
+      </div>
+
+      <hr class="divider">
+      <h2 id="next">Keep going</h2>
+      <div class="card-grid">
+        <a class="card hover topic-card" href="vulnerabilities.html#v-replay">
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="8" y="7" width="8" height="11" rx="4"/><path d="M12 7V4M8 11H3M21 11h-5"/></svg></span>
+          <h3>Token replay</h3><p>The bearer weakness DPoP and mTLS are designed to neutralize.</p>
+          <span class="more">See the risk →</span>
+        </a>
+        <a class="card hover topic-card" href="auth-flow.html">
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="7" height="5" rx="1.5"/><rect x="14" y="15" width="7" height="5" rx="1.5"/><path d="M6.5 9v4a2 2 0 002 2h5.5"/></svg></span>
+          <h3>Auth Flow</h3><p>Where the bearer access token fits — and what binding changes about it.</p>
+          <span class="more">Walk the flow →</span>
+        </a>
+      </div>
+    </article>
+    <div id="toc-slot"></div>
+  </main>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-clike.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+  <script src="../assets/js/jwt.js"></script>
+  <script src="../assets/js/site.js"></script>
+</body>
+</html>
