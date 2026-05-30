@@ -52,11 +52,11 @@
     ]},
     { title: "Practice", num: "04", items: [
       { t: "Playground", href: "pages/playground.html", ic: "play", kw: "encoder decoder verify sign hs256 interactive", built: true },
-      { t: "Libraries", href: "pages/libraries.html", ic: "code", kw: "node express flask django php spring go dotnet jsonwebtoken pyjwt", built: false }
+      { t: "Libraries", href: "pages/libraries.html", ic: "code", kw: "node express flask django php spring go dotnet jsonwebtoken pyjwt", built: true }
     ]},
     { title: "Reference", num: "05", items: [
-      { t: "Resources", href: "pages/resources.html", ic: "link", kw: "owasp portswigger rfc 7519 jwt.io books github", built: false },
-      { t: "Roadmaps", href: "pages/roadmaps.html", ic: "map", kw: "beginner advanced api security learning path", built: false }
+      { t: "Resources", href: "pages/resources.html", ic: "link", kw: "owasp portswigger rfc 7519 jwt.io books github", built: true },
+      { t: "Roadmaps", href: "pages/roadmaps.html", ic: "map", kw: "beginner advanced api security learning path", built: true }
     ]}
   ];
   const NAV_TOP = [
