@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>JWT Vulnerabilities — The Full Catalogue · CipherToken</title>
+  <meta name="description" content="A defensive catalogue of JWT vulnerabilities: alg:none, algorithm confusion, unverified signatures, weak secrets, kid/jku/jwk header injection, missing claim validation, replay, sensitive-data exposure, key leakage, insecure storage and CSRF — each with detection and prevention.">
+  <meta name="theme-color" content="#06080f">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="JWT Vulnerabilities — The Full Catalogue">
+  <meta property="og:description" content="Sixteen JWT weaknesses across four categories, each with how to detect and how to prevent it.">
+  <meta property="og:image" content="https://example.com/assets/img/og.svg">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="../assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Sora:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .legend { display: flex; gap: .6rem 1.2rem; flex-wrap: wrap; font-family: var(--f-mono); font-size: .78rem; color: var(--text-2); }
+    .legend span { display: inline-flex; align-items: center; gap: .4rem; }
+    .legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+    .acc-body-inner .dp { font-size: .92rem; }
+    .acc-body-inner .dp b { font-family: var(--f-mono); font-size: .76rem; letter-spacing: .04em; text-transform: uppercase; }
+    .dp.detect b { color: var(--warn); }
+    .dp.prevent b { color: var(--ok); }
+    td .badge { font-size: .62rem; }
+  </style>
+</head>
+<body>
+  <main class="docs">
+    <article class="content">
+      <div class="page-head">
+        <nav class="breadcrumb"><a href="../index.html">Home</a> / <span>Security</span> / <span class="muted">Vulnerabilities</span></nav>
+        <span class="eyebrow" style="margin-top:.9rem">Chapter 07</span>
+        <h1>The vulnerability catalogue</h1>
+        <p class="lead">Almost none of these weaknesses are flaws in JWT the format. They live in how tokens are <em>handled</em> — the verification call, the key management, the claim checks. The good news: knowing each attack hands you its defense. Here are sixteen, grouped and paired with detection and prevention.</p>
+      </div>
+
+      <div class="callout note">
+        <svg class="c-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M12 3l8 3v6c0 5-3.4 7.8-8 9-4.6-1.2-8-4-8-9V6l8-3z"/><path d="M12 8v4M12 15v.5"/></svg>
+        <p><span class="c-title">Defensive framing</span>This catalogue is for building and reviewing secure systems. Several issues are demonstrated safely, on fabricated tokens, in the <a class="link" href="playground.html#demos">attack demos</a>. Only test these against systems you own or are authorized to assess.</p>
+      </div>
+
+      <p>A striking number of these collapse under a single habit: <strong>verify properly, with the algorithm pinned</strong> — never just decode, and never trust the token's own <code>alg</code>.</p>
+      <pre data-file="defensive-verify.js"><code class="language-js">import jwt from 'jsonwebtoken';
+
+// ❌ NEVER trust a decoded token — decoding does NOT verify anything
+const unsafe = jwt.decode(token);            // attacker-controlled data
+
+// ✅ Verify with the algorithm pinned and the claims checked
+const claims = jwt.verify(token, KEY, {
+  algorithms: ['RS256'],                     // pin it — defeats alg confusion & none
+  issuer:   'https://auth.example.com',      // check who issued it
+  audience: 'https://api.example.com',       // check it was meant for you
+  clockTolerance: 60                          // small skew only; exp/nbf enforced
+});</code></pre>
+
+      <h2 id="overview">At a glance</h2>
+      <p>Severity is a rough guide — real impact depends on your system. <span class="legend" style="margin-top:.5rem"><span><i style="background:var(--danger)"></i>Critical</span> <span><i style="background:var(--warn)"></i>High / Medium</span> <span><i style="background:var(--accent)"></i>Low</span></span></p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Vulnerability</th><th>Category</th><th>Severity</th><th>Demo</th></tr></thead>
+          <tbody>
+            <tr><td><code>alg: none</code> acceptance</td><td>Algorithm</td><td><span class="badge danger">Critical</span></td><td><a class="link" href="playground.html#demos">Live →</a></td></tr>
+            <tr><td>Algorithm confusion (RS→HS)</td><td>Algorithm</td><td><span class="badge danger">Critical</span></td><td>—</td></tr>
+            <tr><td>Signature never verified</td><td>Algorithm</td><td><span class="badge danger">Critical</span></td><td><a class="link" href="playground.html#demos">Live →</a></td></tr>
+            <tr><td>Weak / guessable secret</td><td>Algorithm</td><td><span class="badge warn">High</span></td><td><a class="link" href="playground.html#demos">Live →</a></td></tr>
+            <tr><td>Weak or small RSA keys</td><td>Algorithm</td><td><span class="badge warn">Medium</span></td><td>—</td></tr>
+            <tr><td><code>kid</code> injection</td><td>Header</td><td><span class="badge warn">High</span></td><td>—</td></tr>
+            <tr><td><code>jku</code> header abuse</td><td>Header</td><td><span class="badge warn">High</span></td><td>—</td></tr>
+            <tr><td><code>jwk</code> header injection</td><td>Header</td><td><span class="badge warn">High</span></td><td>—</td></tr>
+            <tr><td>Missing / unchecked expiry</td><td>Claims</td><td><span class="badge warn">High</span></td><td><a class="link" href="playground.html#demos">Live →</a></td></tr>
+            <tr><td>Missing audience / issuer check</td><td>Claims</td><td><span class="badge warn">High</span></td><td>—</td></tr>
+            <tr><td>Improper / fail-open validation</td><td>Claims</td><td><span class="badge warn">High</span></td><td>—</td></tr>
+            <tr><td>Token replay</td><td>Claims</td><td><span class="badge warn">Medium</span></td><td>—</td></tr>
+            <tr><td>Sensitive data in payload</td><td>Data</td><td><span class="badge warn">Medium</span></td><td>—</td></tr>
+            <tr><td>Signing-key leakage</td><td>Data</td><td><span class="badge danger">Critical</span></td><td>—</td></tr>
+            <tr><td>Insecure storage / XSS theft</td><td>Data</td><td><span class="badge warn">High</span></td><td>—</td></tr>
+            <tr><td>CSRF on cookie tokens</td><td>Data</td><td><span class="badge warn">Medium</span></td><td>—</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="algorithm-attacks">Algorithm &amp; signature attacks</h2>
+      <div class="accordion">
+        <div class="acc-item" id="v-none">
+          <button class="acc-head"><code>alg: none</code> acceptance <span class="badge danger" style="margin-left:.4rem">Critical</span> <svg class="chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></button>
+          <div class="acc-body"><div class="acc-body-inner">
+            <p>An attacker sets the header to <code>{"alg":"none"}</code> and removes the signature. Libraries that honour it skip verification and accept a fully forged token.</p>
+            <p class="dp detect"><b>Detect</b> &nbsp;Send a token with <code>alg:none</code> (and a tampered payload) and see if it's accepted; review code for verification that branches on the header's algorithm.</p>
+            <p class="dp prevent"><b>Prevent</b> &nbsp;Pin allowed algorithms server-side and reject <code>none</code> outright. <a class="link" href="playground.html#demos">See the demo →</a></p>
+          </div></div>
+        </div>
+        <div class="acc-item" id="v-confusion">
+          <button class="acc-head">Algorithm confusion (RS256 → HS256) <span class="badge danger" style="margin-left:.4rem">Critical</span> <svg class="chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></button>
+          <div class="acc-body"><div class="acc-body-inner">
+            <p>The server expects <code>RS256</code> and verifies with an RSA <em>public</em> key. The attacker switches the header to <code>HS256</code> and signs using that public key as the HMAC secret. A verifier that picks the algorithm from the header will accept the forgery — because the “secret” is public.</p>
+            <p class="dp detect"><b>Detect</b> &nbsp;Take a known RS256 token, re-sign an <code>HS256</code> variant with the public key as the secret, and test acceptance. See the <a class="link" href="algorithms.html#confusion">Algorithms chapter</a>.</p>
+            <p class="dp prevent"><b>Prevent</b> &nbsp;Pin a single expected algorithm; never let one key be used under two algorithm types.</p>
+          </div></div>
+        </div>
+        <div class="acc-item" id="v-noverify">
+          <button class="acc-head">Signature never verified <span class="badge danger" style="margin-left:.4rem">Critical</span> <svg class="chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></button>
+          <div class="acc-body"><div class="acc-body-inner">
+            <p>The code <code>decode()</code>s a token and trusts its claims without ever calling <code>verify()</code>. The signature is decorative; anyone can forge claims.</p>
+            <p class="dp detect"><b>Detect</b> &nbsp;Grep for <code>decode</code> used to read identity/roles; send a token with a garbage signature and a tampered payload and see if it's trusted.</p>
+            <p class="dp prevent"><b>Prevent</b> &nbsp;Always verify before reading claims, and make verification failure fatal. <a class="link" href="playground.html#demos">Tampering demo →</a></p>
+          </div></div>
+        </div>
+        <div class="acc-item" id="v-weak-secret">
+          <button class="acc-head">Weak / guessable HMAC secret <span class="badge warn" style="margin-left:.4rem">High</span> <svg class="chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></button>
+          <div class="acc-body"><div class="acc-body-inner">
+            <p>With <code>HS*</code>, the signature is only as strong as the secret. A short or dictionary secret can be recovered offline; then the attacker mints any token.</p>
+            <p class="dp detect"><b>Detect</b> &nbsp;Run a wordlist/brute-force against a captured token (offline); audit config for hard-coded or low-entropy secrets.</p>
+            <p class="dp prevent"><b>Prevent</b> &nbsp;Use a long, random secret (≥256 bits) from a CSPRNG; consider asymmetric keys so verifiers can't sign. <a class="link" href="playground.html#demos">Brute-force demo →</a></p>
+          </div></div>
+        </div>
+        <div class="acc-item" id="v-weak-rsa">
+          <button class="acc-head">Weak or small RSA keys <span class="badge warn" style="margin-left:.4rem">Medium</span> <svg class="chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></button>
+          <div class="acc-body"><div class="acc-body-inner">
+            <p>Undersized RSA keys (e.g. 1024-bit) weaken the signature's security margin over time.</p>
+            <p class="dp detect"><b>Detect</b> &nbsp;Inspect the public key length; flag anything under 2048-bit.</p>
+            <p class="dp prevent"><b>Prevent</b> &nbsp;Use RSA ≥ 2048-bit (3072+ for longer horizons), or switch to ES256 / EdDSA for strong, compact keys.</p>
+          </div></div>
+        </div>
+      </div>
+
+      <h2 id="header-injection">Header-injection attacks</h2>
+      <p>The header can carry fields that tell the verifier <em>which key</em> to use. If the server trusts them blindly, the attacker chooses the key.</p>
+      <div class="accordion">
+        <div class="acc-item" id="v-kid">
+          <button class="acc-head"><code>kid</code> injection <span class="badge warn" style="margin-left:.4rem">High</span> <svg class="chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></button>
+          <div class="acc-body"><div class="acc-body-inner">
+            <p>The <code>kid</code> (key ID) header selects a verification key. If it's used to build a file path or SQL query, an attacker can point it at a file they control, traverse the filesystem, or inject SQL — sometimes coercing the server into verifying with a key they know.</p>
+            <p class="dp detect"><b>Detect</b> &nbsp;Try path-traversal and SQL metacharacters in <code>kid</code>; review how <code>kid</code> maps to a key.</p>
+            <p class="dp prevent"><b>Prevent</b> &nbsp;Treat <code>kid</code> as an opaque lookup against an allow-list of known keys; never feed it into file paths or queries.</p>
+          </div></div>
+        </div>
+        <div class="acc-item" id="v-jku">
+          <button class="acc-head"><code>jku</code> header abuse <span class="badge warn" style="margin-left:.4rem">High</span> <svg class="chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></button>
+          <div class="acc-body"><div class="acc-body-inner">
+            <p>The <code>jku</code> header points to a URL hosting the JSON Web Key Set. If the server fetches whatever URL the token names, an attacker hosts their own key and signs forged tokens that “verify”.</p>
+            <p class="dp detect"><b>Detect</b> &nbsp;Set <code>jku</code> to an attacker-controlled (or SSRF-reachable) URL and test acceptance.</p>
+            <p class="dp prevent"><b>Prevent</b> &nbsp;Ignore <code>jku</code> from the token; fetch keys only from a pre-configured, allow-listed endpoint.</p>
+          </div></div>
+        </div>
+        <div class="acc-item" id="v-jwk">
+          <button class="acc-head"><code>jwk</code> header injection <span class="badge warn" style="margin-left:.4rem">High</span> <svg class="chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></button>
+          <div class="acc-body"><div class="acc-body-inner">
+            <p>The <code>jwk</code> header can embed a full public key <em>inside</em> the token. A naive verifier validates the signature against that embedded key — so the attacker simply ships their own key and a matching signature.</p>
+            <p class="dp detect"><b>Detect</b> &nbsp;Embed a self-generated key in the <code>jwk</code> header, sign with its private half, and test.</p>
+            <p class="dp prevent"><b>Prevent</b> &nbsp;Never verify against keys supplied by the token; only use server-side trusted keys.</p>
+          </div></div>
+        </div>
+      </div>
+
+      <h2 id="claim-flaws">Claim &amp; validation flaws</h2>
+      <div class="accordion">
+        <div class="acc-item" id="v-exp">
+          <button class="acc-head">Missing or unchecked expiry <span class="badge warn" style="margin-left:.4rem">High</span> <svg class="chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></button>
+          <div class="acc-body"><div class="acc-body-inner">
+            <p>No <code>exp</code> claim, or a verifier that ignores it, yields tokens that live forever — a stolen one never stops working.</p>
+            <p class="dp detect"><b>Detect</b> &nbsp;Replay an old/expired token; decode tokens and check for a sensible <code>exp</code>.</p>
+            <p class="dp prevent"><b>Prevent</b> &nbsp;Always set a short <code>exp</code> and enforce it (and <code>nbf</code>) with minimal clock skew. <a class="link" href="playground.html#demos">Expiry demo →</a></p>
+          </div></div>
+        </div>
+        <div class="acc-item" id="v-aud">
+          <button class="acc-head">Missing audience / issuer validation <span class="badge warn" style="margin-left:.4rem">High</span> <svg class="chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></button>
+          <div class="acc-body"><div class="acc-body-inner">
+            <p>Without checking <code>aud</code> and <code>iss</code>, a token minted for one service (or by a different issuer) may be accepted by another — token “confusion” across systems.</p>
+            <p class="dp detect"><b>Detect</b> &nbsp;Present a valid token from a sibling service/audience and see if it's accepted.</p>
+            <p class="dp prevent"><b>Prevent</b> &nbsp;Validate <code>aud</code> against your service and <code>iss</code> against an allow-list on every verification.</p>
+          </div></div>
+        </div>
+        <div class="acc-item" id="v-improper">
+          <button class="acc-head">Improper / fail-open validation <span class="badge warn" style="margin-left:.4rem">High</span> <svg class="chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></button>
+          <div class="acc-body"><div class="acc-body-inner">
+            <p>Verification that “logs and continues” on error, catches exceptions too broadly, or checks only some claims effectively trusts invalid tokens.</p>
+            <p class="dp detect"><b>Detect</b> &nbsp;Review error handling around verification; fuzz with malformed tokens and confirm they're rejected, not waved through.</p>
+            <p class="dp prevent"><b>Prevent</b> &nbsp;Treat any verification failure as a hard reject; rely on a vetted library's full checks rather than ad-hoc logic.</p>
+          </div></div>
+        </div>
+        <div class="acc-item" id="v-replay">
+          <button class="acc-head">Token replay <span class="badge warn" style="margin-left:.4rem">Medium</span> <svg class="chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></button>
+          <div class="acc-body"><div class="acc-body-inner">
+            <p>A captured token is re-sent by an attacker. While it's valid, it works — JWTs are bearer credentials.</p>
+            <p class="dp detect"><b>Detect</b> &nbsp;Capture a token and replay it from another client/context.</p>
+            <p class="dp prevent"><b>Prevent</b> &nbsp;Short lifetimes, TLS everywhere, and for sensitive flows a one-time <code>jti</code> tracked server-side; consider sender-constraining (DPoP / mTLS).</p>
+          </div></div>
+        </div>
+      </div>
+
+      <h2 id="data-storage">Data exposure &amp; storage</h2>
+      <div class="accordion">
+        <div class="acc-item" id="v-sensitive">
+          <button class="acc-head">Sensitive data in the payload <span class="badge warn" style="margin-left:.4rem">Medium</span> <svg class="chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></button>
+          <div class="acc-body"><div class="acc-body-inner">
+            <p>The payload is only Base64URL-encoded — readable by anyone holding the token. Passwords, secrets, or excess PII placed there are effectively exposed.</p>
+            <p class="dp detect"><b>Detect</b> &nbsp;Decode tokens and inspect the payload for anything that shouldn't be public.</p>
+            <p class="dp prevent"><b>Prevent</b> &nbsp;Carry only non-sensitive claims; keep sensitive data server-side, or encrypt the token (JWE). See <a class="link" href="structure.html#base64url">Structure</a>.</p>
+          </div></div>
+        </div>
+        <div class="acc-item" id="v-keyleak">
+          <button class="acc-head">Signing-key leakage <span class="badge danger" style="margin-left:.4rem">Critical</span> <svg class="chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></button>
+          <div class="acc-body"><div class="acc-body-inner">
+            <p>If the HMAC secret or RSA/EC private key leaks — via source code, logs, repos, or config — an attacker can forge unlimited valid tokens. Game over.</p>
+            <p class="dp detect"><b>Detect</b> &nbsp;Scan repos/CI logs/images for secrets; monitor for unexpected token issuance.</p>
+            <p class="dp prevent"><b>Prevent</b> &nbsp;Store keys in a secrets manager/KMS, never in code; rotate regularly and on suspicion; scope key access tightly.</p>
+          </div></div>
+        </div>
+        <div class="acc-item" id="v-storage">
+          <button class="acc-head">Insecure browser storage / XSS theft <span class="badge warn" style="margin-left:.4rem">High</span> <svg class="chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></button>
+          <div class="acc-body"><div class="acc-body-inner">
+            <p>Tokens in <code>localStorage</code> are reachable by any JavaScript on the page — so a single XSS flaw lets an attacker read and exfiltrate them.</p>
+            <p class="dp detect"><b>Detect</b> &nbsp;Check where tokens are stored; review the app's XSS surface and CSP.</p>
+            <p class="dp prevent"><b>Prevent</b> &nbsp;Prefer <code>HttpOnly</code>, <code>Secure</code>, <code>SameSite</code> cookies so script can't read the token; keep access tokens short; fix XSS at the source and deploy a strong CSP.</p>
+          </div></div>
+        </div>
+        <div class="acc-item" id="v-csrf">
+          <button class="acc-head">CSRF on cookie-stored tokens <span class="badge warn" style="margin-left:.4rem">Medium</span> <svg class="chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></button>
+          <div class="acc-body"><div class="acc-body-inner">
+            <p>Storing a token in a cookie dodges XSS reads but reintroduces CSRF: browsers attach cookies automatically, so a forged cross-site request can ride the user's token.</p>
+            <p class="dp detect"><b>Detect</b> &nbsp;Attempt a cross-site state-changing request and see if the cookie is honoured without an anti-CSRF check.</p>
+            <p class="dp prevent"><b>Prevent</b> &nbsp;Use <code>SameSite=Lax/Strict</code> cookies, anti-CSRF tokens for state-changing requests, and verify <code>Origin</code>/<code>Referer</code>.</p>
+          </div></div>
+        </div>
+      </div>
+
+      <div class="callout tip" style="margin-top:1.6rem">
+        <svg class="c-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12l5 5 9-10"/></svg>
+        <p><span class="c-title">The through-line</span>Pin the algorithm, verify before you trust, validate <code>exp</code>/<code>aud</code>/<code>iss</code>, never trust token-supplied keys, protect the signing key, and store tokens carefully. Do those and most of this list simply can't happen.</p>
+      </div>
+
+      <hr class="divider">
+      <h2 id="next">Keep going</h2>
+      <div class="card-grid">
+        <a class="card hover topic-card" href="playground.html#demos">
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/></svg></span>
+          <h3>Attack Demos</h3><p>Watch <code>none</code>, weak-secret, tampering and expiry play out on fabricated tokens.</p>
+          <span class="more">Run the demos →</span>
+        </a>
+        <a class="card hover topic-card" href="soon.html?t=Best%20Practices">
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l8 3v6c0 5-3.4 7.8-8 9-4.6-1.2-8-4-8-9V6l8-3z"/></svg></span>
+          <h3>Best Practices</h3><p>The defensive playbook — turn this catalogue into a checklist with before/after code.</p>
+          <span class="more">Coming soon →</span>
+        </a>
+      </div>
+    </article>
+    <div id="toc-slot"></div>
+  </main>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-clike.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+  <script src="../assets/js/jwt.js"></script>
+  <script src="../assets/js/site.js"></script>
+</body>
+</html>

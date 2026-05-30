@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OAuth vs JWT — Format, Framework &amp; Identity Layer · CipherToken</title>
+  <meta name="description" content="Why “OAuth vs JWT” compares two different things. JWT is a token format; OAuth 2.0 is an authorization framework; OpenID Connect adds authentication; sessions are the stateful baseline. How they fit together, a comparison table, access vs ID tokens, and when to use what.">
+  <meta name="theme-color" content="#06080f">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="OAuth vs JWT — Format, Framework & Identity Layer">
+  <meta property="og:description" content="JWT vs OAuth 2.0 vs OpenID Connect vs sessions — what each one actually is, and how they fit together.">
+  <meta property="og:image" content="https://example.com/assets/img/og.svg">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="../assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Sora:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .fit { width: 100%; overflow-x: auto; }
+    .fit svg { min-width: 520px; width: 100%; height: auto; }
+    .fit .b-oauth { fill: var(--surface); stroke: var(--cyan); stroke-width: 1.6; }
+    .fit .b-oidc { fill: var(--surface-2); stroke: var(--violet); stroke-width: 1.6; }
+    .fit .lbl { fill: var(--text); font-family: var(--f-display); font-weight: 700; font-size: 15px; }
+    .fit .sub { fill: var(--text-3); font-family: var(--f-mono); font-size: 11px; }
+    .fit .chip { fill: var(--code-bg); stroke: var(--border-2); }
+    .fit .chip-t { fill: var(--t-header); font-family: var(--f-mono); font-size: 12px; font-weight: 600; }
+    .fit .tag { font-family: var(--f-mono); font-size: 10px; letter-spacing: .1em; }
+  </style>
+</head>
+<body>
+  <main class="docs">
+    <article class="content">
+      <div class="page-head">
+        <nav class="breadcrumb"><a href="../index.html">Home</a> / <span>Authentication</span> / <span class="muted">OAuth vs JWT</span></nav>
+        <span class="eyebrow" style="margin-top:.9rem">Chapter 06</span>
+        <h1>OAuth vs JWT</h1>
+        <p class="lead">It's one of the most common questions in web security — and a slightly unfair one, because the two aren't really competitors. One is a <em>format</em>; the other is a <em>framework</em>. Sorting out which is which (and where OpenID Connect and plain sessions fit) makes the whole landscape click into place.</p>
+      </div>
+
+      <h2 id="category-error">They're not really rivals</h2>
+      <p>Asking “OAuth or JWT?” is a bit like asking “engine or fuel?” They operate at different layers and are frequently used <strong>together</strong>. In a nutshell:</p>
+      <ul>
+        <li><strong>JWT</strong> is a token <strong>format</strong> — a way to package signed claims as a string.</li>
+        <li><strong>OAuth 2.0</strong> is an authorization <strong>framework</strong> — a set of flows for granting an application limited access to resources.</li>
+        <li><strong>OpenID Connect (OIDC)</strong> is an authentication <strong>layer on top of OAuth 2.0</strong> — it adds “who is this user?”.</li>
+        <li><strong>Sessions</strong> are the stateful <strong>baseline</strong> — the classic server-side alternative to token-based auth.</li>
+      </ul>
+      <p>A typical real-world login uses several at once: an OAuth 2.0 flow (the framework) returns tokens, those tokens are often JWTs (the format), and if you're logging a user <em>in</em> rather than just authorizing API access, OpenID Connect (the layer) supplies an ID token — which is itself a JWT.</p>
+
+      <h2 id="what-is-each">What each one actually is</h2>
+      <div class="accordion">
+        <div class="acc-item">
+          <button class="acc-head">JWT — a token format <span class="badge info" style="margin-left:.4rem">format</span> <svg class="chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></button>
+          <div class="acc-body"><div class="acc-body-inner">
+            <p>A compact, signed way to represent claims as <code>header.payload.signature</code>. It says nothing about <em>how</em> you obtain or exchange one — only how it's structured and verified. JWTs show up as access tokens, ID tokens, and more.</p>
+          </div></div>
+        </div>
+        <div class="acc-item">
+          <button class="acc-head">OAuth 2.0 — delegated authorization <span class="badge info" style="margin-left:.4rem">framework</span> <svg class="chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></button>
+          <div class="acc-body"><div class="acc-body-inner">
+            <p>A framework that lets a user grant an application <strong>limited access</strong> to their data on another service — without sharing their password. Think “Let this app read your Google Calendar.” It defines roles (resource owner, client, authorization server, resource server), <strong>scopes</strong>, and grant flows, and it issues <strong>access tokens</strong> (and usually refresh tokens). Crucially, OAuth does <em>not</em> require those tokens to be JWTs — they can be opaque random strings instead.</p>
+            <p>OAuth answers <em>authorization</em> (“what may this app do?”), not <em>authentication</em> (“who is the user?”). Using it as a login mechanism on its own is a classic mistake.</p>
+          </div></div>
+        </div>
+        <div class="acc-item">
+          <button class="acc-head">OpenID Connect — authentication layer <span class="badge info" style="margin-left:.4rem">identity</span> <svg class="chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></button>
+          <div class="acc-body"><div class="acc-body-inner">
+            <p>A thin layer built on top of OAuth 2.0 that adds proper authentication. Its key addition is the <strong>ID token</strong> — always a JWT — which states who the user is (and when/how they authenticated). “Sign in with Google/Apple/Microsoft” is OIDC. If you need to know the user's identity, this is the standard you want, not raw OAuth.</p>
+          </div></div>
+        </div>
+        <div class="acc-item">
+          <button class="acc-head">Sessions — the stateful baseline <span class="badge info" style="margin-left:.4rem">stateful</span> <svg class="chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></button>
+          <div class="acc-body"><div class="acc-body-inner">
+            <p>The traditional approach: the server stores session state and hands the browser an opaque session ID in a cookie. Simple, instantly revocable, and ideal for server-rendered first-party apps — but it requires shared session storage to scale. This is the alternative JWT-based stateless auth is usually compared against (see the <a class="link" href="what-is-jwt.html#sessions-vs-tokens">What is JWT</a> chapter).</p>
+          </div></div>
+        </div>
+      </div>
+
+      <h2 id="how-they-fit">How they fit together</h2>
+      <p>The cleanest mental model is layered: OpenID Connect sits on OAuth 2.0, and the tokens flowing through both are commonly formatted as JWTs.</p>
+      <div class="card fit" style="padding:1.4rem">
+        <svg viewBox="0 0 640 250" role="img" aria-label="OpenID Connect is layered on top of OAuth 2.0; tokens are commonly JWTs">
+          <rect class="b-oauth" x="20" y="24" width="600" height="200" rx="16"/>
+          <text class="tag" x="38" y="48" style="fill:var(--cyan)">OAUTH 2.0</text>
+          <text class="sub" x="38" y="64">authorization framework · issues access tokens</text>
+          <rect class="b-oidc" x="46" y="84" width="548" height="120" rx="12"/>
+          <text class="tag" x="64" y="108" style="fill:var(--violet)">OPENID CONNECT</text>
+          <text class="sub" x="64" y="124">authentication layer · adds the ID token</text>
+          <!-- token chips -->
+          <rect class="chip" x="70" y="140" width="230" height="46" rx="9"/>
+          <text class="chip-t" x="185" y="162" text-anchor="middle">Access token</text>
+          <text class="sub" x="185" y="178" text-anchor="middle">authorization · call APIs</text>
+          <rect class="chip" x="340" y="140" width="230" height="46" rx="9"/>
+          <text class="chip-t" x="455" y="162" text-anchor="middle">ID token (JWT)</text>
+          <text class="sub" x="455" y="178" text-anchor="middle">authentication · who you are</text>
+        </svg>
+        <p style="font-size:.86rem;color:var(--text-3);margin:.6rem 0 0;font-family:var(--f-mono)">Access tokens may be JWT or opaque · ID tokens are always JWT</p>
+      </div>
+
+      <h2 id="comparison">Side by side</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th></th><th>JWT</th><th>OAuth 2.0</th><th>OpenID Connect</th><th>Sessions</th></tr></thead>
+          <tbody>
+            <tr><td>What it is</td><td>Token format</td><td>Authorization framework</td><td>Authentication layer</td><td>Stateful mechanism</td></tr>
+            <tr><td>Answers</td><td>“How is this signed?”</td><td>“What may the app do?”</td><td>“Who is the user?”</td><td>“Who is the user?”</td></tr>
+            <tr><td>State</td><td>Stateless</td><td>Either</td><td>Either</td><td>Stateful</td></tr>
+            <tr><td>Issues</td><td>—</td><td>Access / refresh tokens</td><td>ID token (+OAuth tokens)</td><td>Session ID</td></tr>
+            <tr><td>Best for</td><td>Carrying claims</td><td>Third-party API access</td><td>Federated login (SSO)</td><td>First-party server apps</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="access-vs-id">Access token vs. ID token</h2>
+      <p>OIDC hands you two tokens with very different purposes, and mixing them up is a frequent security bug:</p>
+      <div class="vs-grid">
+        <div class="vs-col good">
+          <div class="vs-head"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12l5 5 9-10"/></svg>Access token → APIs</div>
+          <div style="padding:1rem"><p style="margin:0;font-size:.9rem">Proves <strong>authorization</strong>. Send it to resource servers to call APIs. The API is its intended audience. May be a JWT or opaque.</p></div>
+        </div>
+        <div class="vs-col bad">
+          <div class="vs-head"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 3l9 16H3z"/></svg>ID token → your app only</div>
+          <div style="padding:1rem"><p style="margin:0;font-size:.9rem">Proves <strong>authentication</strong> to <em>your</em> client. Don't send it to APIs as a credential, and don't treat an access token as proof of identity.</p></div>
+        </div>
+      </div>
+
+      <h2 id="when">When to use what</h2>
+      <div class="steps">
+        <div class="step"><div class="s-num">1</div><div class="s-body"><h4>First-party app, you own client and server</h4><p>Your own JWT-based auth — or plain sessions — is perfectly reasonable. No need for the full OAuth machinery.</p></div></div>
+        <div class="step"><div class="s-num">2</div><div class="s-body"><h4>“Log in with Google / GitHub / Apple”</h4><p>Use <strong>OpenID Connect</strong>. It's the standard for federated identity, and the ID token tells you who signed in.</p></div></div>
+        <div class="step"><div class="s-num">3</div><div class="s-body"><h4>Third-party apps acting on a user's behalf</h4><p>Use <strong>OAuth 2.0</strong> with scopes, so users grant narrow, revocable access without sharing credentials.</p></div></div>
+        <div class="step"><div class="s-num">4</div><div class="s-body"><h4>You need instant revocation / server-rendered pages</h4><p><strong>Sessions</strong> are often the simplest correct answer. Don't reach for JWTs reflexively.</p></div></div>
+      </div>
+
+      <h2 id="pitfalls">Common pitfalls</h2>
+      <div class="callout warn">
+        <svg class="c-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M12 3l9 16H3z"/><path d="M12 9v4M12 16v.5"/></svg>
+        <p><span class="c-title">Watch out for</span>Using OAuth 2.0 as a <em>login</em> system (it's authorization — use OIDC for identity); rolling your own OAuth/OIDC instead of a vetted provider; treating a JWT as a whole session without short lifetimes and refresh; and confusing the ID token with the access token.</p>
+      </div>
+
+      <hr class="divider">
+      <h2 id="next">Keep going</h2>
+      <div class="card-grid">
+        <a class="card hover topic-card" href="auth-flow.html">
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="7" height="5" rx="1.5"/><rect x="14" y="15" width="7" height="5" rx="1.5"/><path d="M6.5 9v4a2 2 0 002 2h5.5"/></svg></span>
+          <h3>Auth Flow</h3><p>See the access/refresh token dance that OAuth and OIDC build on.</p>
+          <span class="more">Walk the flow →</span>
+        </a>
+        <a class="card hover topic-card" href="vulnerabilities.html">
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="8" y="7" width="8" height="11" rx="4"/><path d="M12 7V4M8 11H3M21 11h-5M8 16l-3 2M16 16l3 2"/></svg></span>
+          <h3>Vulnerabilities</h3><p>The full catalogue of JWT weaknesses — with detection and prevention for each.</p>
+          <span class="more">Study the flaws →</span>
+        </a>
+      </div>
+    </article>
+    <div id="toc-slot"></div>
+  </main>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-clike.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+  <script src="../assets/js/jwt.js"></script>
+  <script src="../assets/js/site.js"></script>
+</body>
+</html>
