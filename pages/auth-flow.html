@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>JWT Authentication Flow — Access &amp; Refresh Tokens · CipherToken</title>
+  <meta name="description" content="How JWT authentication actually flows: logging in, the access vs refresh token model, sending bearer tokens, refreshing, refresh-token rotation and reuse detection, sensible lifetimes, and logout. Includes an interactive sequence diagram.">
+  <meta name="theme-color" content="#06080f">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="JWT Authentication Flow — Access & Refresh Tokens">
+  <meta property="og:description" content="Login, bearer requests, refresh, rotation and logout — walked through step by step with an animated sequence diagram.">
+  <meta property="og:image" content="https://example.com/assets/img/og.svg">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="../assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Sora:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .aseq { width: 100%; overflow-x: auto; }
+    .aseq svg { min-width: 640px; }
+    .aseq g.step { opacity: .24; transition: opacity .35s var(--ease); }
+    .aseq g.step.on { opacity: 1; }
+    .aseq .lane { fill: var(--text); font-family: var(--f-display); font-weight: 700; font-size: 14px; }
+    .aseq .actor { fill: var(--surface-2); stroke: var(--border-2); }
+    .aseq .life { stroke: var(--border-2); stroke-width: 1.4; stroke-dasharray: 4 5; }
+    .aseq .arr { stroke-width: 1.8; fill: none; }
+    .aseq g.step.on .arr { stroke-width: 2.8; }
+    .aseq .arr.req { stroke: var(--cyan); }
+    .aseq .arr.res { stroke: var(--ok); }
+    .aseq .arr.refresh { stroke: var(--violet); }
+    .aseq .arr.err { stroke: var(--danger); }
+    .aseq .lab { fill: var(--text-3); font-family: var(--f-mono); font-size: 12px; }
+    .aseq g.step.on .lab { fill: var(--text); font-weight: 600; }
+    .aseq .num { fill: var(--accent); font-family: var(--f-mono); font-weight: 700; font-size: 11px; }
+    .seq-ctrl { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; margin-top: 1rem; }
+    .seq-dots { display: flex; gap: 6px; margin-left: auto; }
+    .seq-dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--border-2); transition: background var(--t-fast); }
+    .seq-dots i.on { background: var(--accent); }
+    .seq-cap { margin-top: .8rem; min-height: 2.8em; font-size: .92rem; color: var(--text-2); }
+    .seq-cap b { color: var(--accent); font-family: var(--f-mono); font-size: .82rem; }
+  </style>
+</head>
+<body>
+  <main class="docs">
+    <article class="content">
+      <div class="page-head">
+        <nav class="breadcrumb"><a href="../index.html">Home</a> / <span>Authentication</span> / <span class="muted">Auth Flow</span></nav>
+        <span class="eyebrow" style="margin-top:.9rem">Chapter 05</span>
+        <h1>The authentication flow</h1>
+        <p class="lead">Knowing what a token is gets you halfway. The other half is the choreography: how a token is issued at login, attached to each request, and quietly renewed before it expires — without ever sending the user back to the login screen. This chapter walks the whole dance.</p>
+      </div>
+
+      <h2 id="the-cast">Two tokens, two jobs</h2>
+      <p>Most production JWT setups don't use one token — they use <strong>two</strong>, with deliberately different lifetimes. Understanding why is the key to everything that follows.</p>
+      <p>An <strong>access token</strong> is the workhorse: it's short-lived and travels on every request to prove you're allowed in. A <strong>refresh token</strong> is the quiet backup: it's long-lived, kept somewhere safe, and used for one thing only — getting a fresh access token when the current one runs out.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th></th><th>Access token</th><th>Refresh token</th></tr></thead>
+          <tbody>
+            <tr><td>Lifetime</td><td>Short — 5 to 15 minutes</td><td>Long — days to weeks</td></tr>
+            <tr><td>Sent…</td><td>On every API request</td><td>Only to the refresh endpoint</td></tr>
+            <tr><td>Purpose</td><td>Grants access to resources</td><td>Obtains new access tokens</td></tr>
+            <tr><td>If stolen</td><td>Limited window of abuse</td><td>High impact — guard it closely</td></tr>
+            <tr><td>Stored</td><td>Memory / short-lived store</td><td><code>HttpOnly</code> cookie / secure store</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>The pay-off: because the access token expires fast, a stolen one is useful only briefly. But because the refresh token can mint replacements, the user isn't forced to log in every few minutes. Short blast radius <em>and</em> a smooth experience.</p>
+
+      <h2 id="login">Step 1 — Logging in</h2>
+      <p>The user submits credentials once. The auth server checks them and, if they're good, signs and returns both tokens — typically as JSON:</p>
+      <pre data-file="login-response.json"><code class="language-json">{
+  "access_token":  "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refresh_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type":    "Bearer",
+  "expires_in":    900
+}</code></pre>
+      <p><code>expires_in</code> here is 900 seconds — fifteen minutes — for the access token. The client stashes both tokens and is ready to make authenticated calls.</p>
+
+      <h2 id="using">Step 2 — Using the access token</h2>
+      <p>On each request to a protected resource, the client attaches the access token in the <code>Authorization</code> header using the <strong>Bearer</strong> scheme:</p>
+      <pre data-file="request.http"><code class="language-bash">GET /api/orders HTTP/1.1
+Host: api.example.com
+Authorization: Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...</code></pre>
+      <p>“Bearer” means exactly what it sounds like: whoever <em>bears</em> (holds) the token gets access — there's no extra proof of identity. That's why transport security and short lifetimes matter so much. The API verifies the signature and the claims (Is it expired? Is the audience me?) locally, with no session lookup, and serves the request. If the token is missing or invalid it returns <code>401 Unauthorized</code>; if the token is valid but lacks permission, <code>403 Forbidden</code>.</p>
+
+      <h2 id="refresh">Step 3 — Refreshing</h2>
+      <p>Eventually the access token expires and the API answers a request with <code>401</code>. Rather than bouncing the user to a login form, the client sends its <strong>refresh token</strong> to a dedicated endpoint and gets a new access token back:</p>
+      <pre data-file="refresh.http"><code class="language-bash">POST /auth/refresh HTTP/1.1
+Host: auth.example.com
+Content-Type: application/json
+
+{ "refresh_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..." }</code></pre>
+      <p>The auth server validates the refresh token, and — if all is well — issues a fresh access token. The client then quietly retries the original request. From the user's perspective, nothing happened.</p>
+
+      <h2 id="rotation">Refresh-token rotation</h2>
+      <p>A refresh token is powerful and long-lived, which makes it a juicy target. <strong>Rotation</strong> shrinks that risk: every time a refresh token is used, the server issues a <em>new</em> refresh token alongside the new access token and <strong>invalidates the old one</strong>. A given refresh token works exactly once.</p>
+      <p>This also gives you theft detection almost for free. If an attacker steals a refresh token and uses it, the legitimate client's copy is now stale. When the real client next tries to refresh with that now-invalid token, the server sees a <strong>reused token</strong> — a strong signal of compromise — and can revoke the entire token family, forcing a fresh login.</p>
+      <div class="callout tip" style="margin-top:1rem">
+        <svg class="c-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12l5 5 9-10"/></svg>
+        <p><span class="c-title">Rotation in one line</span>One-time-use refresh tokens turn a silent theft into a noisy, detectable event — and limit how long a stolen one stays useful.</p>
+      </div>
+
+      <h2 id="expiration">Lifetimes &amp; expiration</h2>
+      <p>The whole model leans on the time claims doing their job. <code>exp</code> (expiration) and <code>nbf</code> (not-before) are checked on every verification, usually with a small allowance for <strong>clock skew</strong> (a minute or two) so that slightly out-of-sync servers don't reject valid tokens.</p>
+      <p>There's no universal "correct" lifetime, but sensible defaults look like this:</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Token</th><th>Typical lifetime</th><th>Why</th></tr></thead>
+          <tbody>
+            <tr><td>Access token</td><td>5–15 minutes</td><td>Short enough that a stolen one expires quickly</td></tr>
+            <tr><td>Refresh token</td><td>Hours to weeks</td><td>Long enough to avoid constant logins; rotated on use</td></tr>
+            <tr><td>Clock-skew leeway</td><td>≤ 1–2 minutes</td><td>Tolerates minor server time drift, no more</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout warn" style="margin-top:1rem">
+        <svg class="c-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M12 3l9 16H3z"/><path d="M12 9v4M12 16v.5"/></svg>
+        <p><span class="c-title">Don't stretch the access token</span>Making access tokens long-lived to "avoid the hassle of refresh" throws away the whole security benefit. Keep them short and let the refresh flow do its job.</p>
+      </div>
+
+      <h2 id="logout">Logging out &amp; revocation</h2>
+      <p>Here's where stateless bites back. Because a signed access token is self-contained, the server can't "cancel" it before it expires — there's nothing to delete. A practical logout therefore combines a few moves:</p>
+      <ul>
+        <li><strong>Discard the tokens client-side</strong> — clear the cookie or memory so the browser stops sending them.</li>
+        <li><strong>Revoke the refresh token server-side</strong> — rotation already invalidates old ones; an explicit denylist (keyed by the <code>jti</code> claim) handles immediate revocation.</li>
+        <li><strong>Keep access tokens short</strong> — so the brief window where a discarded-but-unexpired access token still works is small.</li>
+      </ul>
+      <p>For systems that truly need instant, global revocation of access tokens, you're partly stepping back toward stateful checks (a denylist or a quick "is this still valid?" lookup) — a reminder that JWTs trade revocation control for statelessness.</p>
+
+      <h2 id="full-sequence">The full flow, step by step</h2>
+      <p>Here's everything together — login, a successful call, an expiry, a refresh with rotation, and a successful retry. Use the controls to walk through it (or let it play).</p>
+      <div class="card aseq" style="padding:1.2rem">
+        <svg id="seq-svg" viewBox="0 0 800 600" role="img" aria-label="Interactive sequence diagram of the JWT authentication flow">
+          <defs>
+            <marker id="m-cyan" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0 0L7 3L0 6Z" style="fill:var(--cyan)"/></marker>
+            <marker id="m-ok" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0 0L7 3L0 6Z" style="fill:var(--ok)"/></marker>
+            <marker id="m-violet" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0 0L7 3L0 6Z" style="fill:var(--violet)"/></marker>
+            <marker id="m-danger" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0 0L7 3L0 6Z" style="fill:var(--danger)"/></marker>
+          </defs>
+          <!-- actors -->
+          <rect class="actor" x="40" y="20" width="160" height="38" rx="10"/><text class="lane" x="120" y="44" text-anchor="middle">Client</text>
+          <rect class="actor" x="330" y="20" width="180" height="38" rx="10"/><text class="lane" x="420" y="44" text-anchor="middle">Auth Server</text>
+          <rect class="actor" x="620" y="20" width="160" height="38" rx="10"/><text class="lane" x="700" y="44" text-anchor="middle">Resource API</text>
+          <!-- lifelines -->
+          <line class="life" x1="120" y1="58" x2="120" y2="585"/>
+          <line class="life" x1="420" y1="58" x2="420" y2="585"/>
+          <line class="life" x1="700" y1="58" x2="700" y2="585"/>
+          <!-- steps -->
+          <g class="step" data-step="0"><text class="num" x="120" y="94">1</text><text class="lab" x="270" y="94" text-anchor="middle">POST /login (credentials)</text><line class="arr req" x1="124" y1="100" x2="414" y2="100" marker-end="url(#m-cyan)"/></g>
+          <g class="step" data-step="1"><text class="num" x="420" y="146" text-anchor="end">2</text><text class="lab" x="270" y="146" text-anchor="middle">access token + refresh token</text><line class="arr res" x1="416" y1="152" x2="126" y2="152" marker-end="url(#m-ok)"/></g>
+          <g class="step" data-step="2"><text class="num" x="120" y="198">3</text><text class="lab" x="410" y="198" text-anchor="middle">GET /api + Bearer access token</text><line class="arr req" x1="124" y1="204" x2="694" y2="204" marker-end="url(#m-cyan)"/></g>
+          <g class="step" data-step="3"><text class="num" x="700" y="250" text-anchor="end">4</text><text class="lab" x="410" y="250" text-anchor="middle">200 OK · verified locally</text><line class="arr res" x1="696" y1="256" x2="126" y2="256" marker-end="url(#m-ok)"/></g>
+          <g class="step" data-step="4"><text class="num" x="120" y="302">5</text><text class="lab" x="410" y="302" text-anchor="middle">GET /api + expired token</text><line class="arr req" x1="124" y1="308" x2="694" y2="308" marker-end="url(#m-cyan)"/></g>
+          <g class="step" data-step="5"><text class="num" x="700" y="354" text-anchor="end">6</text><text class="lab" x="410" y="354" text-anchor="middle">401 Unauthorized</text><line class="arr err" x1="696" y1="360" x2="126" y2="360" marker-end="url(#m-danger)"/></g>
+          <g class="step" data-step="6"><text class="num" x="120" y="406">7</text><text class="lab" x="270" y="406" text-anchor="middle">POST /refresh (refresh token)</text><line class="arr refresh" x1="124" y1="412" x2="414" y2="412" marker-end="url(#m-violet)"/></g>
+          <g class="step" data-step="7"><text class="num" x="420" y="458" text-anchor="end">8</text><text class="lab" x="270" y="458" text-anchor="middle">new access token (+ rotate)</text><line class="arr refresh" x1="416" y1="464" x2="126" y2="464" marker-end="url(#m-violet)"/></g>
+          <g class="step" data-step="8"><text class="num" x="120" y="510">9</text><text class="lab" x="410" y="510" text-anchor="middle">retry GET /api → 200 OK</text><line class="arr req" x1="124" y1="516" x2="694" y2="516" marker-end="url(#m-cyan)"/></g>
+        </svg>
+        <div class="seq-ctrl">
+          <button class="btn btn-ghost btn-sm" id="seq-prev">‹ Prev</button>
+          <button class="btn btn-primary btn-sm" id="seq-play">▶ Play</button>
+          <button class="btn btn-ghost btn-sm" id="seq-next">Next ›</button>
+          <div class="seq-dots" id="seq-dots"></div>
+        </div>
+        <div class="seq-cap" id="seq-cap"></div>
+      </div>
+
+      <hr class="divider">
+      <h2 id="next">Keep going</h2>
+      <div class="card-grid">
+        <a class="card hover topic-card" href="playground.html">
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M10 9l5 3-5 3V9z" fill="currentColor"/></svg></span>
+          <h3>Playground</h3><p>Decode a token, check its <code>exp</code>, and see what an expired token looks like to a verifier.</p>
+          <span class="more">Open playground →</span>
+        </a>
+        <a class="card hover topic-card" href="soon.html?t=OAuth%20vs%20JWT">
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v18M5 7l-2 3 2 3M5 7h6M19 14l2 3-2 3M19 20h-6"/></svg></span>
+          <h3>OAuth vs JWT</h3><p>Where this flow fits inside OAuth 2.0 and OpenID Connect — and what's actually different.</p>
+          <span class="more">Coming soon →</span>
+        </a>
+      </div>
+    </article>
+    <div id="toc-slot"></div>
+  </main>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-clike.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+  <script src="../assets/js/jwt.js"></script>
+  <script src="../assets/js/site.js"></script>
+  <script>
+    /* Interactive sequence walkthrough */
+    (function () {
+      const svg = document.getElementById("seq-svg");
+      if (!svg) return;
+      const steps = Array.from(svg.querySelectorAll("g.step"));
+      const cap = document.getElementById("seq-cap");
+      const dotsWrap = document.getElementById("seq-dots");
+      const prev = document.getElementById("seq-prev");
+      const next = document.getElementById("seq-next");
+      const play = document.getElementById("seq-play");
+      const captions = [
+        "The user submits their credentials to the auth server.",
+        "Credentials check out — the server returns a short-lived access token and a long-lived refresh token.",
+        "The client calls the API, sending the access token as a Bearer header.",
+        "The API verifies the signature and claims locally — no database lookup — and responds.",
+        "Time passes. The client calls again, but the access token has now expired.",
+        "The API rejects the request with 401 Unauthorized.",
+        "Instead of forcing a re-login, the client sends its refresh token to the refresh endpoint.",
+        "The auth server issues a fresh access token and rotates the refresh token (the old one is now dead).",
+        "The client retries the original request with the new token — success."
+      ];
+      const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      let i = 0, timer = null;
+
+      dotsWrap.innerHTML = steps.map((_, k) => `<i data-k="${k}"></i>`).join("");
+      const dots = Array.from(dotsWrap.children);
+
+      function render() {
+        steps.forEach((s, k) => s.classList.toggle("on", k === i));
+        dots.forEach((d, k) => d.classList.toggle("on", k <= i));
+        cap.innerHTML = `<b>Step ${i + 1} / ${steps.length}</b> &nbsp; ${captions[i]}`;
+      }
+      function go(n) { i = (n + steps.length) % steps.length; render(); }
+      function stop() { if (timer) { clearInterval(timer); timer = null; play.innerHTML = "▶ Play"; } }
+      function start() {
+        if (timer) return stop();
+        play.innerHTML = "❚❚ Pause";
+        timer = setInterval(() => {
+          if (i >= steps.length - 1) { stop(); return; }
+          go(i + 1);
+        }, 2100);
+      }
+      prev.addEventListener("click", () => { stop(); go(i - 1); });
+      next.addEventListener("click", () => { stop(); go(i + 1); });
+      play.addEventListener("click", start);
+      dots.forEach(d => d.addEventListener("click", () => { stop(); go(+d.dataset.k); }));
+      render();
+
+      // auto-play once when scrolled into view (unless reduced motion)
+      if (!reduce) {
+        let played = false;
+        const io = new IntersectionObserver(es => {
+          es.forEach(e => { if (e.isIntersecting && !played) { played = true; start(); } });
+        }, { threshold: 0.4 });
+        io.observe(svg);
+      }
+    })();
+  </script>
+</body>
+</html>
