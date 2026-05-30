@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" font-family="'Segoe UI',system-ui,sans-serif">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1200" y2="630">
+      <stop stop-color="#46e0e0"/><stop offset=".5" stop-color="#7c8cff"/><stop offset="1" stop-color="#c08cff"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="20%" cy="0%" r="80%">
+      <stop stop-color="#7c8cff" stop-opacity=".35"/><stop offset="100%" stop-color="#06080f" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="grid" width="48" height="48" patternUnits="userSpaceOnUse">
+      <path d="M48 0H0V48" fill="none" stroke="#ffffff" stroke-opacity=".05" stroke-width="1"/>
+    </pattern>
+  </defs>
+  <rect width="1200" height="630" fill="#06080f"/>
+  <rect width="1200" height="630" fill="url(#grid)"/>
+  <rect width="1200" height="630" fill="url(#glow)"/>
+  <g transform="translate(80,90)">
+    <rect x="0" y="0" width="56" height="56" rx="14" fill="none" stroke="url(#g)" stroke-width="3"/>
+    <path d="M19 28l6 6 13-13" fill="none" stroke="url(#g)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="74" y="38" font-size="30" font-weight="800" fill="#eef1f8">CipherToken</text>
+  </g>
+  <text x="80" y="310" font-size="78" font-weight="800" fill="#eef1f8">The JWT Security</text>
+  <text x="80" y="392" font-size="78" font-weight="800" fill="url(#g)">Academy</text>
+  <text x="80" y="452" font-size="28" fill="#aeb6c9">Structure · Algorithms · Vulnerabilities · Defenses · Interactive Playground</text>
+  <g font-family="'JetBrains Mono',monospace" font-size="22">
+    <rect x="80" y="500" width="1040" height="56" rx="12" fill="#0a0d18" stroke="#ffffff" stroke-opacity=".08"/>
+    <text x="100" y="535"><tspan fill="#5ad1ff">eyJhbGciOiJIUzI1NiJ9</tspan><tspan fill="#6b748c">.</tspan><tspan fill="#c590ff">eyJzdWIiOiJhZGEifQ</tspan><tspan fill="#6b748c">.</tspan><tspan fill="#6ff0ad">dQssw5c…</tspan></text>
+  </g>
+</svg>

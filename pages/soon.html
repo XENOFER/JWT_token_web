@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Coming soon · CipherToken</title>
+  <meta name="description" content="This chapter of the CipherToken JWT Security Academy is being written.">
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#06080f">
+  <link rel="icon" href="../assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Sora:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+  <main class="docs no-toc">
+    <article class="content" style="max-width:720px">
+      <div class="page-head">
+        <nav class="breadcrumb"><a href="../index.html">Home</a> / <span class="muted">Coming soon</span></nav>
+      </div>
+      <div class="card center" style="padding:clamp(2.4rem,6vw,4rem)">
+        <span class="badge info" style="margin-bottom:1rem">In production</span>
+        <h1 style="font-size:clamp(1.8rem,4vw,2.6rem)"><span class="grad-text" id="soon-title">This chapter</span><br>is being written</h1>
+        <p style="max-width:46ch;margin:1rem auto 0">The academy is rolling out chapter by chapter so each one is thorough and accurate. In the meantime, dive into what's already live.</p>
+        <div class="hero-cta" style="justify-content:center;margin-top:1.8rem">
+          <a class="btn btn-primary" href="structure.html">Token Structure</a>
+          <a class="btn btn-ghost" href="playground.html">Playground &amp; Demos</a>
+        </div>
+      </div>
+      <div class="card-grid" style="margin-top:1.4rem">
+        <div class="card"><h3 style="font-size:1.02rem">What's live now</h3><p class="muted" style="font-size:.9rem;margin-top:.4rem">Homepage, the interactive Token Structure decoder, and the full Playground with four sandboxed attack demos.</p></div>
+        <div class="card"><h3 style="font-size:1.02rem">What's next</h3><p class="muted" style="font-size:.9rem;margin-top:.4rem">What is JWT, Algorithms, Auth Flow, Vulnerabilities, Best Practices, Libraries, OAuth vs JWT, Resources, and Roadmaps.</p></div>
+      </div>
+    </article>
+  </main>
+  <script src="../assets/js/jwt.js"></script>
+  <script src="../assets/js/site.js"></script>
+  <script>
+    (function () {
+      const t = new URLSearchParams(location.search).get("t");
+      if (t) {
+        const el = document.getElementById("soon-title");
+        if (el) el.textContent = t;
+        document.title = t + " — coming soon · CipherToken";
+      }
+    })();
+  </script>
+</body>
+</html>

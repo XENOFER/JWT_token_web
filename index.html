@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CipherToken — The JWT Security Academy</title>
+  <meta name="description" content="A modern, interactive academy for learning JSON Web Tokens: structure, algorithms, authentication flows, vulnerabilities, attack demos, and secure implementation. Built for defensive security education.">
+  <meta name="keywords" content="JWT, JSON Web Token, JWT security, JWT vulnerabilities, JWT attacks, HS256, RS256, authentication, OWASP, cybersecurity education">
+  <meta name="author" content="CipherToken Academy">
+  <meta name="theme-color" content="#06080f">
+  <link rel="canonical" href="https://example.com/">
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="CipherToken — The JWT Security Academy">
+  <meta property="og:description" content="Learn JWT structure, cryptography, vulnerabilities and defenses — with a real, in-browser token playground and sandboxed attack demos.">
+  <meta property="og:image" content="https://example.com/assets/img/og.svg">
+  <meta property="og:url" content="https://example.com/">
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="CipherToken — The JWT Security Academy">
+  <meta name="twitter:description" content="Interactive JWT security learning: structure, algorithms, attacks, and secure defenses.">
+  <meta name="twitter:image" content="https://example.com/assets/img/og.svg">
+  <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Sora:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+  <main>
+    <!-- ===================== HERO ===================== -->
+    <section class="hero">
+      <div class="container">
+        <div class="hero-inner">
+          <div class="hero-copy">
+            <span class="eyebrow reveal">Defensive Security · Interactive</span>
+            <h1 class="reveal d1">Understand <span class="g">JSON Web Tokens</span> — inside and out.</h1>
+            <p class="lead reveal d2">From the three Base64URL segments to the cryptography that signs them, the attacks that break them, and the defenses that stop those attacks. A hands-on academy with a real in-browser token engine.</p>
+            <div class="hero-cta reveal d3">
+              <a class="btn btn-primary" href="pages/structure.html">Start learning <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+              <a class="btn btn-ghost" href="pages/playground.html">Open the Playground</a>
+            </div>
+            <div class="hero-stats reveal d4">
+              <div class="st"><div class="n"><span data-count="13">0</span></div><div class="l">Chapters</div></div>
+              <div class="st"><div class="n"><span data-count="13">0</span></div><div class="l">Algorithms covered</div></div>
+              <div class="st"><div class="n"><span data-count="20">0</span></div><div class="l">Vulnerabilities</div></div>
+              <div class="st"><div class="n"><span data-count="100">0</span><span class="mono">%</span></div><div class="l">Client-side</div></div>
+            </div>
+          </div>
+          <div class="terminal-wrap reveal d2">
+            <div class="terminal">
+              <div class="t-bar"><span class="dots"><i></i><i></i><i></i></span><span class="t-title">ciphertoken — jwt inspect</span></div>
+              <div class="t-body" id="term"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== TOPICS ===================== -->
+    <section class="section">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="eyebrow">The curriculum</span>
+          <h2>Six pillars, one mental model</h2>
+          <p>Each topic builds on the last — by the end you can read any token, reason about its security, and implement it correctly.</p>
+        </div>
+        <div class="card-grid">
+          <a class="card hover topic-card reveal" href="pages/structure.html">
+            <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></svg></span>
+            <h3>Token Structure</h3>
+            <p>Header, payload, signature — and exactly what Base64URL encoding does (and doesn't) protect.</p>
+            <span class="more">Decode a token →</span>
+          </a>
+          <a class="card hover topic-card reveal d1" href="pages/soon.html?t=Algorithms">
+            <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="8" cy="8" r="4"/><path d="M11 11l9 9M17 17l2-2"/></svg></span>
+            <h3>Algorithms</h3>
+            <p>HMAC, RSA, ECDSA and EdDSA — symmetric vs asymmetric signing, and the infamous <code>none</code>.</p>
+            <span class="more">Compare signing →</span>
+          </a>
+          <a class="card hover topic-card reveal d2" href="pages/soon.html?t=Authentication%20Flow">
+            <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="7" height="5" rx="1.5"/><rect x="14" y="15" width="7" height="5" rx="1.5"/><path d="M6.5 9v4a2 2 0 002 2h5.5"/></svg></span>
+            <h3>Auth Flow</h3>
+            <p>Access vs refresh tokens, bearer headers, expiry, rotation, and stateless session design.</p>
+            <span class="more">Trace the flow →</span>
+          </a>
+          <a class="card hover topic-card reveal" href="pages/soon.html?t=Vulnerabilities">
+            <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="8" y="7" width="8" height="11" rx="4"/><path d="M12 7V4M8 11H3M21 11h-5M8 16l-3 2M16 16l3 2"/></svg></span>
+            <h3>Vulnerabilities</h3>
+            <p>Algorithm confusion, weak secrets, <code>kid</code>/<code>jku</code>/<code>jwk</code> abuse, replay, and more.</p>
+            <span class="more">Study the flaws →</span>
+          </a>
+          <a class="card hover topic-card reveal d1" href="pages/playground.html#demos">
+            <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/></svg></span>
+            <h3>Attack Demos</h3>
+            <p>Safe, sandboxed demonstrations on fabricated tokens: see why each defense matters.</p>
+            <span class="more">Run a demo →</span>
+          </a>
+          <a class="card hover topic-card reveal d2" href="pages/soon.html?t=Best%20Practices">
+            <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l8 3v6c0 5-3.4 7.8-8 9-4.6-1.2-8-4-8-9V6l8-3z"/></svg></span>
+            <h3>Best Practices</h3>
+            <p>Strong secrets, key rotation, HttpOnly + SameSite cookies, and strict claim validation.</p>
+            <span class="more">Harden it →</span>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== LIVE PREVIEW ===================== -->
+    <section class="section" style="padding-top:0">
+      <div class="container">
+        <div class="card reveal" style="padding:0;overflow:hidden">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0" class="preview-split">
+            <div style="padding:clamp(1.5rem,3vw,2.4rem)">
+              <span class="eyebrow">See it in action</span>
+              <h2 style="margin:.7rem 0 .6rem;font-size:1.6rem">Every token tells a story</h2>
+              <p style="margin-bottom:1.2rem">A JWT is just three Base64URL strings joined by dots. Decode the colored token to reveal its header and payload — then head to the playground to verify its signature and try the attack demos.</p>
+              <div class="token-vis" id="home-token" style="margin-bottom:.7rem">loading…</div>
+              <div class="tok-legend">
+                <span><i class="lh"></i>Header</span><span><i class="lp"></i>Payload</span><span><i class="ls"></i>Signature</span>
+              </div>
+              <a class="btn btn-ghost btn-sm mt" href="pages/structure.html" style="margin-top:1.2rem">Full breakdown</a>
+            </div>
+            <div style="background:var(--code-bg);border-left:1px solid var(--border);padding:clamp(1.5rem,3vw,2.4rem);display:flex;flex-direction:column;gap:1rem" class="preview-decode">
+              <div class="part-card h" style="background:transparent;border-color:var(--border)"><div class="pc-head"><i></i>HEADER</div><pre id="home-header">…</pre></div>
+              <div class="part-card p" style="background:transparent;border-color:var(--border)"><div class="pc-head"><i></i>PAYLOAD</div><pre id="home-payload">…</pre></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== ROADMAP ===================== -->
+    <section class="section" style="padding-top:0">
+      <div class="container">
+        <div class="grid-2" style="gap:clamp(2rem,5vw,4rem);align-items:start">
+          <div class="reveal">
+            <span class="eyebrow">Learning roadmap</span>
+            <h2 style="margin:.7rem 0 .7rem">A path from zero to secure</h2>
+            <p>New to tokens or sharpening your security review skills, the academy is structured so you always know what comes next.</p>
+            <a class="btn btn-ghost btn-sm" href="pages/soon.html?t=Roadmaps" style="margin-top:1.2rem">View full roadmaps</a>
+          </div>
+          <div class="roadmap reveal d1">
+            <div class="rm-step"><div class="rm-phase">Phase 01 · Foundations</div><h3>Read any token</h3><p>Structure, claims, encoding, and the algorithm zoo.</p></div>
+            <div class="rm-step"><div class="rm-phase">Phase 02 · Flows</div><h3>Wire up authentication</h3><p>Access &amp; refresh tokens, rotation, and stateless sessions.</p></div>
+            <div class="rm-step"><div class="rm-phase">Phase 03 · Offense</div><h3>Break it (safely)</h3><p>Understand confusion attacks, weak secrets, and header injection.</p></div>
+            <div class="rm-step"><div class="rm-phase">Phase 04 · Defense</div><h3>Implement it correctly</h3><p>Validation, key management, secure storage, and logout.</p></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== SECURITY TEASER ===================== -->
+    <section class="section" style="padding-top:0">
+      <div class="container">
+        <div class="card reveal" style="background:var(--grad-soft);border-color:var(--border-2)">
+          <div class="flex between items-center wrap gap">
+            <div style="max-width:46ch">
+              <span class="eyebrow" style="color:var(--danger)">Threat model</span>
+              <h2 style="margin:.6rem 0 .5rem;font-size:1.5rem">20 vulnerabilities, each with a fix</h2>
+              <p style="margin:0">We pair every weakness with detection and prevention guidance. Knowing how an attack works is what lets you defend against it.</p>
+            </div>
+            <a class="btn btn-primary" href="pages/playground.html#demos">Explore attack demos</a>
+          </div>
+          <div class="flex wrap gap-sm mt-2">
+            <span class="pill"><span class="dot" style="background:var(--danger)"></span>alg: none</span>
+            <span class="pill"><span class="dot" style="background:var(--danger)"></span>algorithm confusion</span>
+            <span class="pill"><span class="dot" style="background:var(--warn)"></span>weak secret</span>
+            <span class="pill"><span class="dot" style="background:var(--warn)"></span>kid injection</span>
+            <span class="pill"><span class="dot" style="background:var(--warn)"></span>jku abuse</span>
+            <span class="pill"><span class="dot" style="background:var(--danger)"></span>jwk injection</span>
+            <span class="pill"><span class="dot" style="background:var(--warn)"></span>token replay</span>
+            <span class="pill"><span class="dot" style="background:var(--warn)"></span>missing exp</span>
+            <span class="pill"><span class="dot" style="background:var(--warn)"></span>XSS theft</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== CTA ===================== -->
+    <section class="section" style="padding-top:0">
+      <div class="container">
+        <div class="card reveal center" style="padding:clamp(2.5rem,6vw,4rem)">
+          <h2 style="font-size:clamp(1.8rem,4vw,2.6rem)">Ready to decode the web's<br><span class="grad-text">favourite token?</span></h2>
+          <p style="max-width:52ch;margin:1rem auto 0">Open the interactive playground and start signing, decoding, and breaking tokens — entirely in your browser, with no data leaving the page.</p>
+          <div class="hero-cta" style="justify-content:center;margin-top:1.8rem">
+            <a class="btn btn-primary" href="pages/playground.html">Launch Playground</a>
+            <a class="btn btn-ghost" href="pages/structure.html">Read the docs</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+  <script src="assets/js/jwt.js"></script>
+  <script src="assets/js/site.js"></script>
+  <script>
+    /* Live homepage decoder + typewriter terminal */
+    (function () {
+      const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+      async function liveToken() {
+        if (!window.JWT) return;
+        const iat = Math.floor(Date.now() / 1000);
+        const token = await JWT.sign(
+          { alg: "HS256", typ: "JWT" },
+          { sub: "1024", name: "Ada Lovelace", role: "admin", iat: iat, exp: iat + 3600 },
+          "a-demo-secret-key"
+        );
+        const el = document.getElementById("home-token");
+        if (el) el.innerHTML = JWT.colorize(token);
+        const d = JWT.decode(token);
+        const hdr = document.getElementById("home-header"), pld = document.getElementById("home-payload");
+        if (hdr) hdr.textContent = d.headerJson;
+        if (pld) pld.textContent = d.payloadJson;
+      }
+      liveToken();
+
+      // Terminal typewriter
+      const lines = [
+        { c: "prompt", t: "$ " }, { c: "cmd", t: "ciphertoken decode <token>\n" },
+        { c: "dim", t: "→ parsing 3 segments…\n\n" },
+        { c: "th", t: 'header   ' }, { c: "out", t: '{ "alg": "HS256", "typ": "JWT" }\n' },
+        { c: "tp", t: "payload  " }, { c: "out", t: '{ "sub": "1024", "role": "admin", "exp": … }\n' },
+        { c: "ts", t: "sig      " }, { c: "out", t: "dQw4w9WgXcQ…  (HMAC-SHA256)\n\n" },
+        { c: "prompt", t: "$ " }, { c: "cmd", t: "ciphertoken verify --secret ******\n" },
+        { c: "ok", t: "✔ signature valid · exp not reached\n" },
+        { c: "dim", t: "✔ ready. try the playground →\n" }
+      ];
+      const term = document.getElementById("term");
+      if (!term) return;
+      if (reduce) { term.innerHTML = lines.map(l => `<span class="${l.c}">${l.t}</span>`).join("") + '<span class="cursor"></span>'; return; }
+      let li = 0, ci = 0;
+      const cursor = '<span class="cursor"></span>';
+      function type() {
+        if (li >= lines.length) { return; }
+        const line = lines[li];
+        if (ci === 0) term.insertAdjacentHTML("beforeend", `<span class="${line.c}" data-l="${li}"></span>`);
+        const span = term.querySelector(`[data-l="${li}"]`);
+        span.textContent = line.t.slice(0, ci + 1);
+        ci++;
+        term.innerHTML = term.innerHTML.replace(cursor, "");
+        term.insertAdjacentHTML("beforeend", cursor);
+        if (ci >= line.t.length) { li++; ci = 0; setTimeout(type, line.c === "cmd" ? 90 : 30); }
+        else setTimeout(type, line.t.length > 30 ? 12 : 34);
+      }
+      setTimeout(type, 500);
+    })();
+  </script>
+  <style>
+    @media (max-width: 760px){ .preview-split{ grid-template-columns:1fr !important; } .preview-decode{ border-left:none !important; border-top:1px solid var(--border); } }
+  </style>
+</body>
+</html>

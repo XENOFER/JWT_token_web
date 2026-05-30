@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>JWT Structure — Header, Payload &amp; Signature · CipherToken</title>
+  <meta name="description" content="A JWT is three Base64URL segments: header, payload, and signature. Decode each part interactively, understand registered/public/private claims, and learn why Base64URL is encoding — not encryption.">
+  <meta name="theme-color" content="#06080f">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="JWT Structure — Header, Payload & Signature">
+  <meta property="og:description" content="Decode a JWT segment by segment with an interactive, in-browser decoder.">
+  <meta property="og:image" content="https://example.com/assets/img/og.svg">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="../assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Sora:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+  <main class="docs">
+    <article class="content">
+      <div class="page-head">
+        <nav class="breadcrumb"><a href="../index.html">Home</a> / <span>Get Started</span> / <span class="muted">Token Structure</span></nav>
+        <span class="eyebrow" style="margin-top:.9rem">Chapter 03</span>
+        <h1>Anatomy of a JWT</h1>
+        <p class="lead">Strip away the mystique and a JSON Web Token is almost disappointingly simple: three text segments, each Base64URL-encoded, joined by dots. Learn to read every part — then decode one yourself.</p>
+      </div>
+
+      <p>Written out, a token follows one fixed shape:</p>
+      <div class="token-vis">
+        <span class="tok h">xxxxx</span><span class="tok dot">.</span><span class="tok p">yyyyy</span><span class="tok dot">.</span><span class="tok s">zzzzz</span>
+      </div>
+      <div class="tok-legend">
+        <span><i class="lh"></i>Header — metadata</span>
+        <span><i class="lp"></i>Payload — claims</span>
+        <span><i class="ls"></i>Signature — integrity</span>
+      </div>
+      <p>The two dots are structural separators, not part of the data. Split on them and you have three independent pieces you can decode on their own. Let's do exactly that.</p>
+
+      <h2 id="decoder">Decode a token yourself</h2>
+      <p>Paste any JWT below (or use the sample). Decoding happens entirely in your browser — nothing is sent anywhere. Notice that the header and payload reveal themselves <strong>without any key at all</strong>.</p>
+      <div class="card" style="padding:1.2rem">
+        <div class="field" style="margin-bottom:1rem">
+          <label for="s-token">JWT input</label>
+          <textarea class="input" id="s-token" rows="4" spellcheck="false"></textarea>
+        </div>
+        <div class="token-vis" id="s-vis" style="margin-bottom:1rem">…</div>
+        <div id="s-parts"></div>
+        <div id="s-notes" style="margin-top:1rem"></div>
+      </div>
+      <div class="callout note" style="margin-top:1rem">
+        <svg class="c-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="12" r="9"/><path d="M12 8v.5M12 11v5"/></svg>
+        <p><span class="c-title">Try this</span>Change a single character in the payload segment. The decoded JSON changes, but on a real server the <em>signature</em> would no longer match — which is the whole point of part three.</p>
+      </div>
+
+      <h2 id="header">Part one — the header</h2>
+      <p>The header is a small JSON object describing how the token was signed. In the overwhelming majority of tokens it contains just two fields:</p>
+      <pre data-file="header.json"><code class="language-json">{
+  "alg": "HS256",
+  "typ": "JWT"
+}</code></pre>
+      <p><code>alg</code> names the signing algorithm (for example <code>HS256</code> or <code>RS256</code>), and <code>typ</code> declares the media type. Headers may carry extra fields such as <code>kid</code> (a key identifier), <code>jku</code>/<code>jwk</code> (where to find the verification key), or <code>cty</code> for nested tokens — and several of those become attack surfaces, as the security chapters explain.</p>
+      <div class="callout warn" style="margin-top:1rem">
+        <svg class="c-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M12 3l9 16H3z"/><path d="M12 9v4M12 16v.5"/></svg>
+        <p><span class="c-title">The header is attacker-controlled</span>Because anyone holding a token can rewrite its header, a verifier must never blindly trust <code>alg</code>. Pin the expected algorithm server-side instead.</p>
+      </div>
+
+      <h2 id="payload">Part two — the payload and its claims</h2>
+      <p>The payload carries the <strong>claims</strong>: statements about an entity (typically the user) and metadata about the token itself. Claims fall into three families.</p>
+
+      <h3 id="registered">Registered claims</h3>
+      <p>A small set of standardized, optional claims defined by the specification. Using them keeps tokens interoperable. The most common:</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Claim</th><th>Name</th><th>Purpose</th></tr></thead>
+          <tbody>
+            <tr><td><code>iss</code></td><td>Issuer</td><td>Who created and signed the token.</td></tr>
+            <tr><td><code>sub</code></td><td>Subject</td><td>The principal the token is about (e.g. a user ID).</td></tr>
+            <tr><td><code>aud</code></td><td>Audience</td><td>Who the token is intended for; reject if it isn't you.</td></tr>
+            <tr><td><code>exp</code></td><td>Expiration</td><td>Unix time after which the token must be refused.</td></tr>
+            <tr><td><code>nbf</code></td><td>Not Before</td><td>Unix time before which the token is not yet valid.</td></tr>
+            <tr><td><code>iat</code></td><td>Issued At</td><td>When the token was minted.</td></tr>
+            <tr><td><code>jti</code></td><td>JWT ID</td><td>A unique identifier — useful for revocation lists.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 id="public-private">Public &amp; private claims</h3>
+      <p><strong>Public claims</strong> are names you define but register or namespace (often as a URI) to avoid collisions across systems. <strong>Private claims</strong> are custom names agreed upon privately between the parties using the token — things like <code>role</code>, <code>tenant_id</code>, or <code>email</code>. They work fine, but two unrelated systems could give the same private name different meanings, so namespacing matters as you scale.</p>
+      <pre data-file="payload.json"><code class="language-json">{
+  "sub": "1024",            // registered
+  "iss": "https://auth.example.com",
+  "exp": 1735689600,
+  "role": "admin",          // private claim
+  "https://example.com/tenant": "acme"  // public (namespaced)
+}</code></pre>
+
+      <h2 id="base64url">Base64URL is encoding, not encryption</h2>
+      <p>This is the single most important — and most misunderstood — fact about JWTs. The header and payload are <strong>Base64URL-encoded</strong>, a reversible transformation that makes binary-safe, URL-safe text. It uses <code>-</code> and <code>_</code> instead of <code>+</code> and <code>/</code>, and drops <code>=</code> padding.</p>
+      <p>Anyone can reverse it with one line of code — no key required:</p>
+      <pre data-file="decode.js"><code class="language-js">// Decode a JWT payload in the browser — no secret needed
+const [header, payload, signature] = token.split('.');
+
+const fromB64Url = (s) =>
+  decodeURIComponent(
+    atob(s.replace(/-/g, '+').replace(/_/g, '/'))
+      .split('')
+      .map(c => '%' + c.charCodeAt(0).toString(16).padStart(2, '0'))
+      .join('')
+  );
+
+console.log(JSON.parse(fromB64Url(payload))); // fully readable</code></pre>
+      <div class="callout danger" style="margin-top:1rem">
+        <svg class="c-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M12 3l9 16H3z"/><path d="M12 9v4M12 16v.5"/></svg>
+        <p><span class="c-title">Never put secrets in a payload</span>Passwords, API keys, or personal data placed in a JWT payload are effectively public. The signature stops <em>tampering</em>, not <em>reading</em>. If you need confidentiality, encrypt the token (JWE) or keep sensitive data server-side.</p>
+      </div>
+
+      <h2 id="signature">Part three — the signature</h2>
+      <p>The signature is what turns three readable strings into something trustworthy. It's computed over the <em>encoded</em> header and payload, using the algorithm named in the header and a key:</p>
+      <pre data-file="signature.txt"><code class="language-bash">signature = HMAC_SHA256(
+    base64url(header) + "." + base64url(payload),
+    secret
+)</code></pre>
+      <p>Change a single byte of the header or payload and the recomputed signature won't match — so the server rejects it. With a symmetric algorithm the same secret signs and verifies; with an asymmetric one a private key signs and a public key verifies. Either way, the signature guarantees <strong>integrity</strong> and <strong>authenticity</strong>, but — to repeat the point that trips people up — <strong>not confidentiality</strong>.</p>
+      <div class="callout tip" style="margin-top:1rem">
+        <svg class="c-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12l5 5 9-10"/></svg>
+        <p><span class="c-title">Mental model</span>Header = "how I'm signed." Payload = "what I claim." Signature = "proof I haven't been altered by someone without the key."</p>
+      </div>
+
+      <hr class="divider">
+      <h2 id="next">Keep going</h2>
+      <div class="card-grid">
+        <a class="card hover topic-card" href="playground.html">
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M10 9l5 3-5 3V9z" fill="currentColor"/></svg></span>
+          <h3>Playground</h3><p>Build and verify tokens with a real HMAC engine, then try the attack demos.</p>
+          <span class="more">Open playground →</span>
+        </a>
+        <a class="card hover topic-card" href="soon.html?t=Algorithms">
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="8" cy="8" r="4"/><path d="M11 11l9 9"/></svg></span>
+          <h3>Algorithms</h3><p>How HS*, RS*, ES* and EdDSA actually sign — and the danger of <code>none</code>.</p>
+          <span class="more">Compare algorithms →</span>
+        </a>
+      </div>
+    </article>
+    <div id="toc-slot"></div>
+  </main>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-clike.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+  <script src="../assets/js/jwt.js"></script>
+  <script src="../assets/js/site.js"></script>
+  <script>
+    /* Interactive structure decoder */
+    (function () {
+      const J = window.JWT; if (!J) return;
+      const tokenEl = document.getElementById("s-token");
+      const vis = document.getElementById("s-vis");
+      const parts = document.getElementById("s-parts");
+      const notes = document.getElementById("s-notes");
+
+      (async function setSample() {
+        const iat = Math.floor(Date.now() / 1000);
+        tokenEl.value = await J.sign({ alg: "HS256", typ: "JWT" },
+          { sub: "1024", name: "Ada Lovelace", role: "admin", iss: "auth.example.com", iat: iat, exp: iat + 3600 },
+          "a-demo-secret-key");
+        render();
+      })();
+
+      function render() {
+        const token = tokenEl.value.trim();
+        vis.innerHTML = J.colorize(token);
+        const d = J.decode(token);
+        if (!d.header && !d.payload) { parts.innerHTML = ""; }
+        else {
+          parts.innerHTML = `<div class="part-cards">
+            <div class="part-card h"><div class="pc-head"><i></i>HEADER</div><pre>${J.escapeHtml(d.headerJson || "—")}</pre></div>
+            <div class="part-card p"><div class="pc-head"><i></i>PAYLOAD</div><pre>${J.escapeHtml(d.payloadJson || "—")}</pre></div>
+            <div class="part-card s"><div class="pc-head"><i></i>SIGNATURE (opaque)</div><pre>${J.escapeHtml(d.signature || "(none)")}</pre></div>
+          </div>`;
+        }
+        let n = "";
+        d.errors.forEach(e => n += `<div class="callout danger" style="margin-top:.6rem"><svg class="c-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="12" r="9"/><path d="M9 9l6 6M15 9l-6 6"/></svg><p>${J.escapeHtml(e)}</p></div>`);
+        d.warnings.forEach(w => n += `<div class="callout warn" style="margin-top:.6rem"><svg class="c-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M12 3l9 16H3z"/><path d="M12 9v4"/></svg><p>${J.escapeHtml(w)}</p></div>`);
+        notes.innerHTML = n;
+      }
+      let t; tokenEl.addEventListener("input", () => { clearTimeout(t); t = setTimeout(render, 120); });
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>JWT Playground &amp; Attack Demos · CipherToken</title>
+  <meta name="description" content="Build, decode, and verify JSON Web Tokens with a real in-browser HMAC engine. Then explore safe, sandboxed demonstrations of the none-algorithm, weak-secret, tampering, and expired-token attacks — and how each is prevented.">
+  <meta name="theme-color" content="#06080f">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="JWT Playground & Attack Demos">
+  <meta property="og:description" content="A real, client-side JWT engine plus sandboxed attack demonstrations for defensive learning.">
+  <meta property="og:image" content="https://example.com/assets/img/og.svg">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="../assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Sora:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+  <main class="docs no-toc">
+    <article class="content" style="max-width:1000px">
+      <div class="page-head">
+        <nav class="breadcrumb"><a href="../index.html">Home</a> / <span>Practice</span> / <span class="muted">Playground</span></nav>
+        <span class="eyebrow" style="margin-top:.9rem">Interactive · Runs in your browser</span>
+        <h1>JWT Playground</h1>
+        <p class="lead">A working JWT engine powered by the Web Crypto API. Sign tokens, decode them, and verify HMAC signatures — all locally. No token you create here ever leaves this page.</p>
+      </div>
+
+      <!-- ============ TOOL: build / inspect ============ -->
+      <div data-tabs>
+        <div class="tabs" role="tablist">
+          <button class="tab active" data-tab="build" role="tab">Build &amp; sign</button>
+          <button class="tab" data-tab="inspect" role="tab">Inspect &amp; verify</button>
+        </div>
+
+        <!-- BUILD -->
+        <div class="panel active" data-panel="build">
+          <div class="grid-2" style="gap:1.2rem;align-items:start">
+            <div class="card" style="display:flex;flex-direction:column;gap:1rem">
+              <div class="field">
+                <label for="b-alg">Algorithm</label>
+                <select class="input" id="b-alg">
+                  <option value="HS256">HS256 · HMAC-SHA256</option>
+                  <option value="HS384">HS384 · HMAC-SHA384</option>
+                  <option value="HS512">HS512 · HMAC-SHA512</option>
+                  <option value="none">none · unsigned (insecure)</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Header (derived)</label>
+                <pre class="d-out" id="b-header-preview" style="margin:0">{}</pre>
+              </div>
+              <div class="field">
+                <label for="b-payload">Payload — edit the JSON</label>
+                <textarea class="input" id="b-payload" rows="8" spellcheck="false">{
+  "sub": "1234567890",
+  "name": "Ada Lovelace",
+  "role": "user",
+  "iat": 1716239022,
+  "exp": 2000000000
+}</textarea>
+              </div>
+              <div class="field" id="b-secret-field">
+                <label for="b-secret">Secret (HMAC key)</label>
+                <input class="input" id="b-secret" value="a-demo-secret-key" spellcheck="false">
+              </div>
+            </div>
+
+            <div class="card" style="display:flex;flex-direction:column;gap:1rem">
+              <div class="field">
+                <label>Encoded token</label>
+                <div class="token-vis" id="b-token">…</div>
+              </div>
+              <div class="flex gap-sm wrap">
+                <button class="btn btn-primary btn-sm" id="b-copy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 012-2h10"/></svg><span>Copy token</span></button>
+                <button class="btn btn-ghost btn-sm" id="b-send">Send to Inspector →</button>
+              </div>
+              <div class="tok-legend">
+                <span><i class="lh"></i>Header</span><span><i class="lp"></i>Payload</span><span><i class="ls"></i>Signature</span>
+              </div>
+              <div class="field"><label>Claim check</label><div id="b-claims"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- INSPECT -->
+        <div class="panel" data-panel="inspect">
+          <div class="card" style="display:flex;flex-direction:column;gap:1rem">
+            <div class="field">
+              <label for="i-token">Paste a JWT to decode &amp; verify</label>
+              <textarea class="input" id="i-token" rows="4" spellcheck="false" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."></textarea>
+            </div>
+            <div class="grid-2" style="align-items:end">
+              <div class="field">
+                <label for="i-secret">Secret (for HMAC verification)</label>
+                <input class="input" id="i-secret" placeholder="enter the signing secret" spellcheck="false">
+              </div>
+              <button class="btn btn-primary" id="i-btn" style="margin-bottom:0">Decode &amp; verify</button>
+            </div>
+            <div id="i-validity"></div>
+            <div id="i-decoded"></div>
+            <div id="i-claims"></div>
+            <div id="i-warn"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ ATTACK DEMOS ============ -->
+      <h2 id="demos" style="margin-top:3rem">Attack demonstrations</h2>
+      <div class="callout danger">
+        <svg class="c-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M12 3l8 3v6c0 5-3.4 7.8-8 9-4.6-1.2-8-4-8-9V6l8-3z"/><path d="M12 8v4M12 15v.5"/></svg>
+        <p><span class="c-title">Sandbox &amp; ethics</span>Every demo below runs against <strong>fabricated tokens generated in your browser</strong>. They illustrate why each defense exists — for learning and defensive review only. Never test these techniques against systems you don't own or have explicit permission to assess.</p>
+      </div>
+
+      <div data-tabs style="margin-top:1.4rem">
+        <div class="tabs" role="tablist">
+          <button class="tab active" data-tab="d-none" role="tab">alg: none</button>
+          <button class="tab" data-tab="d-weak" role="tab">Weak secret</button>
+          <button class="tab" data-tab="d-tamper" role="tab">Tampering</button>
+          <button class="tab" data-tab="d-exp" role="tab">Expired</button>
+        </div>
+
+        <!-- none -->
+        <div class="panel active" data-panel="d-none">
+          <div class="demo">
+            <div class="d-head">
+              <span class="badge danger">Critical</span>
+              <h3>The <code>none</code> algorithm</h3>
+            </div>
+            <div class="d-body">
+              <p style="margin:0">Some libraries once honoured a header of <code>{"alg":"none"}</code> and skipped signature verification entirely. An attacker can rewrite a token's header to <code>none</code>, strip the signature, and walk in. A correct verifier refuses this outright.</p>
+              <div class="field"><label for="none-src">Starting token (signed, role=user)</label><textarea class="input" id="none-src" rows="2" readonly></textarea></div>
+              <button class="btn btn-primary btn-sm" id="none-run" style="align-self:flex-start">Forge an unsigned admin token</button>
+              <div class="d-out" id="none-out">Click the button to run the demonstration.</div>
+              <div class="callout tip" style="margin-top:0"><svg class="c-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12l5 5 9-10"/></svg><p><span class="c-title">Prevention</span>Pin an explicit allow-list of algorithms server-side and reject <code>none</code>. Never derive the verification algorithm from the token's own header.</p></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- weak secret -->
+        <div class="panel" data-panel="d-weak">
+          <div class="demo">
+            <div class="d-head"><span class="badge warn">High</span><h3>Weak-secret brute force</h3></div>
+            <div class="d-body">
+              <p style="margin:0">HMAC tokens are only as strong as their secret. If the secret is a common word, it can be recovered offline by trying candidates until one reproduces the signature — then the attacker can mint any token.</p>
+              <div class="field"><label for="weak-src">Token signed with a weak secret</label><textarea class="input" id="weak-src" rows="2" readonly></textarea></div>
+              <div class="field"><label>Demo wordlist</label><div class="d-out" id="weak-list" style="max-height:90px"></div></div>
+              <button class="btn btn-primary btn-sm" id="weak-run" style="align-self:flex-start">Run dictionary attack</button>
+              <div class="d-out" id="weak-out">Click to attempt recovery against the demo wordlist.</div>
+              <div class="callout tip" style="margin-top:0"><svg class="c-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12l5 5 9-10"/></svg><p><span class="c-title">Prevention</span>Use a long, random secret of at least 256 bits from a CSPRNG. For multi-service setups, prefer asymmetric keys (RS/ES) so only the issuer holds signing material.</p></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- tampering -->
+        <div class="panel" data-panel="d-tamper">
+          <div class="demo">
+            <div class="d-head"><span class="badge warn">High</span><h3>Payload tampering</h3></div>
+            <div class="d-body">
+              <p style="margin:0">Because the payload is only encoded, an attacker can rewrite a claim — say <code>role</code> from <code>user</code> to <code>admin</code>. Without the secret they can't regenerate the signature, so a verifier that actually checks it will reject the token.</p>
+              <div class="field"><label for="tamper-src">Valid token (role=user)</label><textarea class="input" id="tamper-src" rows="2" readonly></textarea></div>
+              <button class="btn btn-primary btn-sm" id="tamper-run" style="align-self:flex-start">Tamper with the role claim</button>
+              <div class="d-out" id="tamper-out">Click to edit the payload and re-check the signature.</div>
+              <div class="callout tip" style="margin-top:0"><svg class="c-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12l5 5 9-10"/></svg><p><span class="c-title">Prevention</span>Always verify the signature <em>before</em> trusting any claim, and ensure verification failures are fatal — never "log and continue."</p></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- expired -->
+        <div class="panel" data-panel="d-exp">
+          <div class="demo">
+            <div class="d-head"><span class="badge info">Common</span><h3>Expired / long-lived tokens</h3></div>
+            <div class="d-body">
+              <p style="margin:0">A signature can be perfectly valid while the token is far too old to trust. Signature validity and token validity are two different checks — both must pass.</p>
+              <div class="field"><label for="exp-src">Correctly-signed but expired token</label><textarea class="input" id="exp-src" rows="2" readonly></textarea></div>
+              <button class="btn btn-primary btn-sm" id="exp-run" style="align-self:flex-start">Check signature vs expiry</button>
+              <div class="d-out" id="exp-out">Click to compare the two checks.</div>
+              <div class="callout tip" style="margin-top:0"><svg class="c-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12l5 5 9-10"/></svg><p><span class="c-title">Prevention</span>Keep access-token lifetimes short, validate <code>exp</code> and <code>nbf</code> with minimal clock skew, and use refresh tokens for longevity.</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="callout note" style="margin-top:1.6rem">
+        <svg class="c-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="12" r="9"/><path d="M12 8v.5M12 11v5"/></svg>
+        <p><span class="c-title">Want the full catalogue?</span>The Vulnerabilities chapter covers algorithm confusion, <code>kid</code>/<code>jku</code>/<code>jwk</code> header abuse, replay, XSS/CSRF storage issues and more — each with detection and prevention. (Publishing soon.)</p>
+      </div>
+    </article>
+  </main>
+
+  <script src="../assets/js/jwt.js"></script>
+  <script src="../assets/js/site.js"></script>
+  <script src="../assets/js/playground.js"></script>
+</body>
+</html>
