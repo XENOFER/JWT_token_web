@@ -49,6 +49,8 @@
    ]},
    { title: "Security", num: "03", items: [
      { t: "Vulnerabilities", href: "pages/vulnerabilities.html", ic: "bug", kw: "none algorithm confusion kid jku jwk tampering weak secret replay xss csrf", built: true },
+     { t: "Attacking JWTs", href: "pages/jwt-attacks.html", ic: "target", kw: "exploit portswigger burp jwt_tool hashcat none jwk jku kid signature brute force lab ctf offensive", built: true },
+     { t: "Algorithm Confusion", href: "pages/algorithm-confusion.html", ic: "compare", kw: "rs256 hs256 key confusion public key hmac signing attack", built: true },
      { t: "Best Practices", href: "pages/best-practices.html", ic: "shield", kw: "secrets rotation expiration httponly samesite cookie validation logout", built: false },
      { t: "Attack Demos", href: "pages/playground.html#demos", ic: "target", kw: "none weak secret tamper expired signature mismatch sandbox", built: true }
    ]},
