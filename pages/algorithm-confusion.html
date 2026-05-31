@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Algorithm Confusion Attack (RS256 → HS256) · CipherToken</title>
+  <meta name="description" content="A step-by-step walkthrough of the JWT algorithm-confusion (key confusion) attack: making a server that expects RS256 verify a token signed with HS256 using its own public key as the HMAC secret. Obtain the key, convert it, forge, and sign — with jwt_tool and Burp.">
+  <meta name="theme-color" content="#06080f">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Algorithm Confusion Attack (RS256 → HS256)">
+  <meta property="og:description" content="Turn an RS256 verifier into an HS256 one using its public key as the secret — the full four-step attack.">
+  <meta property="og:image" content="https://example.com/assets/img/og.svg">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="../assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Sora:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+  <main class="docs">
+    <article class="content">
+      <div class="page-head">
+        <nav class="breadcrumb"><a href="../index.html">Home</a> / <span>Security</span> / <span class="muted">Algorithm Confusion</span></nav>
+        <span class="eyebrow" style="margin-top:.9rem">Security · Offensive</span>
+        <h1>Algorithm confusion</h1>
+        <p class="lead">Also called <em>key confusion</em>, this is the most elegant JWT attack: you make a server that expects an <code>RS256</code>-signed token happily verify one you signed with <code>HS256</code> — using the server's own <strong>public</strong> key as the HMAC secret. Here's exactly how, step by step.</p>
+      </div>
+
+      <div class="callout danger">
+        <svg class="c-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M12 3l8 3v6c0 5-3.4 7.8-8 9-4.6-1.2-8-4-8-9V6l8-3z"/><path d="M12 8v4M12 15v.5"/></svg>
+        <p><span class="c-title">Authorized targets only</span>Practise this on PortSwigger's <a class="link" href="https://portswigger.net/web-security/jwt/algorithm-confusion" target="_blank" rel="noopener">algorithm-confusion labs</a> or systems you're permitted to test — never anywhere else.</p>
+      </div>
+
+      <h2 id="recap">Symmetric vs. asymmetric — the crux</h2>
+      <p>Recall from the <a class="link" href="algorithms.html#symmetric-vs-asymmetric">Algorithms</a> chapter: <code>RS256</code> signs with a <strong>private</strong> key and verifies with the matching <strong>public</strong> key, while <code>HS256</code> signs and verifies with one <strong>shared secret</strong>. The public key is exactly that — public. The attack hinges on a single observation: if a verifier lets the <em>token</em> choose the algorithm and reuses the same key material, then switching to <code>HS256</code> turns the freely-available public key into the “secret” you need to forge a valid signature.</p>
+
+      <h2 id="how-arise">How the vulnerability arises</h2>
+      <p>It appears when verification logic reads <code>alg</code> from the token and branches on it, but ends up feeding the RSA public key into HMAC verification — or hands a single generic <code>verify()</code> the public key for whatever algorithm the token declares:</p>
+      <pre data-file="vulnerable.js"><code class="language-js">// VULNERABLE — the algorithm comes from the token, one key reused
+const header = decodeHeader(token);
+// HS256 path receives the RSA *public* key as the HMAC secret:
+jwt.verify(token, rsaPublicKey, { algorithms: [header.alg] });</code></pre>
+      <p>An attacker who knows <code>rsaPublicKey</code> (they do — it's public) can now compute a valid <code>HS256</code> signature over any payload.</p>
+
+      <h2 id="attack">Performing the attack</h2>
+      <h3 id="step1">Step 1 — Obtain the server's public key</h3>
+      <p>Most asymmetric setups publish it. Check the standard locations: <code>/jwks.json</code>, <code>/.well-known/jwks.json</code>, or the OIDC discovery document at <code>/.well-known/openid-configuration</code> (whose <code>jwks_uri</code> points to the key set). You'll get one or more keys in JWK form.</p>
+      <h3 id="step2">Step 2 — Convert it to the right format</h3>
+      <p>When the server does HMAC, it uses the key <em>as a string of bytes</em> — so you need the exact <strong>PEM / X.509</strong> representation it would use, down to the header lines and newlines. Convert the JWK to PEM with <code>jwt_tool</code>, <code>openssl</code>, or Burp's JWT Editor key tools. Getting these bytes precisely right is the step people most often fumble.</p>
+      <pre data-file="convert.sh"><code class="language-bash"># Burp JWT Editor: Keys → New RSA Key (paste the JWK) → copy the PEM
+# or with jwt_tool, which can derive/convert and sign in one step (Step 4)</code></pre>
+      <h3 id="step3">Step 3 — Modify your JWT</h3>
+      <p>Change the header's <code>alg</code> to <code>HS256</code> and edit the claims to whatever proves impact — typically a privileged <code>sub</code> or <code>role</code>:</p>
+      <pre data-file="forged-header.json"><code class="language-json">{ "alg": "HS256", "typ": "JWT" }
+// payload, e.g.:  { "sub": "administrator" }</code></pre>
+      <h3 id="step4">Step 4 — Sign with the public key as the secret</h3>
+      <p>Compute the HMAC over <code>header.payload</code> using the PEM public key as the HMAC key. <code>jwt_tool</code> does the whole thing; Burp's JWT Editor can sign with a symmetric key you create from the PEM:</p>
+      <pre data-file="sign.sh"><code class="language-bash"># jwt_tool key-confusion mode, supplying the server's public key as the "secret"
+python3 jwt_tool.py &lt;token&gt; -X k -pk public.pem
+# → outputs an HS256 token a vulnerable server accepts as genuine</code></pre>
+      <p>Send the forged token. A server with the flaw verifies it and grants the access the claims assert.</p>
+
+      <h2 id="derive">Deriving the public key from tokens</h2>
+      <p>What if the public key isn't exposed anywhere? With two valid tokens signed by the same RSA key, the key can often be <strong>recovered mathematically</strong> — tooling such as <code>rsa_sign2n</code> (shipped alongside <code>jwt_tool</code>) computes candidate public keys from the signatures. Once you have a candidate, proceed exactly as above.</p>
+
+      <h2 id="prevention">Prevention</h2>
+      <div class="callout tip">
+        <svg class="c-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12l5 5 9-10"/></svg>
+        <p><span class="c-title">How to shut it down</span>Pin a single expected algorithm at verification rather than reading it from the token · never use the same key material under two different algorithm types · prefer library APIs that bind a key to one algorithm so an <code>HS256</code> token can't be verified with an RSA key. See <a class="link" href="vulnerabilities.html#v-confusion">Vulnerabilities → algorithm confusion</a>.</p>
+      </div>
+
+      <hr class="divider">
+      <h2 id="next">Keep going</h2>
+      <div class="card-grid">
+        <a class="card hover topic-card" href="jwt-attacks.html">
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/></svg></span>
+          <h3>Attacking JWTs</h3><p>Back to the full exploitation guide — signatures, secrets, and header injection.</p>
+          <span class="more">All the attacks →</span>
+        </a>
+        <a class="card hover topic-card" href="algorithms.html">
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="8" cy="8" r="4"/><path d="M11 11l9 9"/></svg></span>
+          <h3>Algorithms</h3><p>The symmetric-vs-asymmetric foundation this attack abuses.</p>
+          <span class="more">Review signing →</span>
+        </a>
+      </div>
+    </article>
+    <div id="toc-slot"></div>
+  </main>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-clike.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+  <script src="../assets/js/jwt.js"></script>
+  <script src="../assets/js/site.js"></script>
+</body>
+</html>

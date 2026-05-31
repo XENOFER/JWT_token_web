@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Attacking JWTs — Exploitation Guide for Labs &amp; Pentests · CipherToken</title>
+  <meta name="description" content="A hands-on guide to finding and exploiting JWT vulnerabilities for the PortSwigger Web Security Academy labs and authorized pentests: signature-verification flaws, alg:none, brute-forcing secrets with hashcat, and jwk/jku/kid header injection — with Burp Suite and jwt_tool.">
+  <meta name="theme-color" content="#06080f">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Attacking JWTs — Exploitation Guide">
+  <meta property="og:description" content="Signature attacks, alg:none, secret cracking, and header injection — the methodology and tools to solve JWT labs.">
+  <meta property="og:image" content="https://example.com/assets/img/og.svg">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="../assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Sora:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>.res-card .ext{width:14px;height:14px;display:inline-block;vertical-align:-2px}</style>
+</head>
+<body>
+  <main class="docs">
+    <article class="content">
+      <div class="page-head">
+        <nav class="breadcrumb"><a href="../index.html">Home</a> / <span>Security</span> / <span class="muted">Attacking JWTs</span></nav>
+        <span class="eyebrow" style="margin-top:.9rem">Security · Offensive</span>
+        <h1>Attacking JWTs</h1>
+        <p class="lead">The defensive catalogue tells you what can go wrong; this is the other side of the glass — how those flaws are actually <em>exploited</em>. It's the methodology and tooling behind the PortSwigger Web Security Academy JWT labs and real authorized assessments: how to spot each weakness, how to exploit it, and what to reach for.</p>
+      </div>
+
+      <div class="callout danger">
+        <svg class="c-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M12 3l8 3v6c0 5-3.4 7.8-8 9-4.6-1.2-8-4-8-9V6l8-3z"/><path d="M12 8v4M12 15v.5"/></svg>
+        <p><span class="c-title">Authorized targets only</span>These techniques are for deliberately vulnerable labs — like PortSwigger's free <a class="link" href="https://portswigger.net/web-security/jwt" target="_blank" rel="noopener">Web Security Academy</a> — and systems you have explicit written permission to test. Using them against anything else is illegal. Learn to attack so you can defend.</p>
+      </div>
+
+      <h2 id="what">What are JWT attacks?</h2>
+      <p>A JWT attack manipulates a token — its header, its claims, or its signature — to make a server trust something it shouldn't: a forged identity, an elevated role, or a token it ought to reject. Because a JWT frequently <em>is</em> the session, nearly all of these attacks aim at one of two targets: how the server <strong>verifies the signature</strong>, or how blindly it <strong>trusts the token's contents</strong>.</p>
+
+      <h2 id="impact">Impact</h2>
+      <p>When it works, the payoff is usually <strong>authentication bypass</strong> and <strong>privilege escalation</strong> — logging in as another user, flipping a <code>role</code> or <code>admin</code> claim, or taking over an account outright. Where tokens carry data, the same flaws can leak it. In a lab you'll typically prove impact by reaching an admin-only function; in the real world the consequences scale with what the token protects.</p>
+
+      <h2 id="how-arise">How the vulnerabilities arise</h2>
+      <p>They come from how tokens are <em>handled</em>, not from the format. The usual roots: signatures that aren't verified (or are only checked when present), servers that trust the algorithm or key a token names for itself, weak or guessable HMAC secrets, and missing claim checks (<code>exp</code>, <code>aud</code>, <code>iss</code>). Very often it's a perfectly good library used incorrectly — verification disabled, or algorithms left unpinned.</p>
+
+      <h2 id="methodology">A testing workflow</h2>
+      <div class="steps">
+        <div class="step"><div class="s-num">1</div><div class="s-body"><h4>Capture &amp; decode</h4><p>Grab the token (Burp, <code>jwt_tool</code>, or the <a class="link" href="playground.html">Playground</a>). Note the <code>alg</code>, the interesting claims (<code>role</code>, <code>admin</code>, <code>sub</code>), and whether <code>exp</code>/<code>aud</code> are present.</p></div></div>
+        <div class="step"><div class="s-num">2</div><div class="s-body"><h4>Probe signature handling</h4><p>Does the server accept a tampered payload? A stripped signature? <code>alg:none</code>? This is the highest-value check.</p></div></div>
+        <div class="step"><div class="s-num">3</div><div class="s-body"><h4>If HMAC, attack the secret</h4><p>Try to crack a weak <code>HS*</code> secret offline.</p></div></div>
+        <div class="step"><div class="s-num">4</div><div class="s-body"><h4>Inspect header parameters</h4><p>Look at <code>kid</code>, <code>jku</code>, <code>jwk</code>, <code>x5u</code> — anything that selects a key — for injection.</p></div></div>
+        <div class="step"><div class="s-num">5</div><div class="s-body"><h4>If RSA, test algorithm confusion</h4><p>Try turning an <code>RS256</code> verifier into an <code>HS256</code> one (its own <a class="link" href="algorithm-confusion.html">walkthrough</a>).</p></div></div>
+        <div class="step"><div class="s-num">6</div><div class="s-body"><h4>Forge &amp; replay</h4><p>Rebuild the token with the claim you want and send it.</p></div></div>
+      </div>
+
+      <h2 id="tooling">Tooling</h2>
+      <p>Three tools cover almost everything:</p>
+      <ul>
+        <li><strong>Burp Suite + JWT Editor</strong> — a free BApp-store extension that adds a JSON Web Token view to decode and edit the header/payload, re-sign, and run helpers (embedded <code>jwk</code>, <code>alg:none</code>, signing with a weak key). The go-to for the PortSwigger labs.</li>
+        <li><strong><a class="link" href="https://github.com/ticarpi/jwt_tool" target="_blank" rel="noopener">jwt_tool</a></strong> — a command-line Swiss-army knife for inspecting, tampering, cracking, and exploiting tokens.</li>
+        <li><strong>hashcat</strong> — fast offline cracking of HMAC secrets.</li>
+      </ul>
+      <pre data-file="jwt_tool.sh"><code class="language-bash"># Decode &amp; inspect a token
+python3 jwt_tool.py &lt;token&gt;
+
+# Tamper with claims interactively
+python3 jwt_tool.py &lt;token&gt; -T
+
+# Crack a weak HMAC secret with a wordlist
+python3 jwt_tool.py &lt;token&gt; -C -d jwt.secrets.list
+
+# Exploit: alg:none variants
+python3 jwt_tool.py &lt;token&gt; -X a
+
+# Exploit: algorithm / key confusion (RS256 → HS256)
+python3 jwt_tool.py &lt;token&gt; -X k -pk public.pem
+
+# Inject a self-signed key via the jwk header
+python3 jwt_tool.py &lt;token&gt; -X i
+# run with -h for the current, full flag list</code></pre>
+      <pre data-file="hashcat.sh"><code class="language-bash"># Mode 16500 = JWT (HMAC). Put the whole token on one line in jwt.txt
+hashcat -m 16500 -a 0 jwt.txt wordlist.txt
+# Popular wordlists for this: jwt.secrets.list, rockyou.txt</code></pre>
+
+      <h2 id="signature-flaws">Exploiting flawed signature verification</h2>
+      <h3 id="arbitrary-sig">Accepting arbitrary signatures</h3>
+      <p>Some servers only verify a signature when one is present, or carry a logic bug that never truly checks it. Test it: edit a claim — say <code>role</code> to <code>admin</code> — and send the token with its <em>original</em> (now mismatched) or a garbage signature. If the request succeeds, the server isn't verifying. In Burp's JWT Editor, just change the payload and send <strong>without</strong> re-signing.</p>
+      <h3 id="no-sig">Accepting tokens with no signature (<code>alg:none</code>)</h3>
+      <p>The unsigned variant. Set the header's <code>alg</code> to <code>none</code>, change whatever claims you like, and drop the signature — but keep the trailing dot, so the token ends in <code>.</code>. Many naive filters block the literal <code>"none"</code> but miss case variations, so also try <code>None</code>, <code>NONE</code>, and <code>nOnE</code>. If it's accepted, you can forge anything.</p>
+      <pre data-file="none-header.json"><code class="language-json">{ "alg": "none", "typ": "JWT" }
+// token becomes:  base64url(header).base64url(payload).   ← empty third part</code></pre>
+
+      <h2 id="brute-force">Brute-forcing weak secrets</h2>
+      <p>If the token uses <code>HS256/384/512</code>, the signature is only as strong as the secret. Save the token and run hashcat (mode 16500) or <code>jwt_tool</code> against a wordlist — the well-known <code>jwt.secrets.list</code> and <code>rockyou.txt</code> recover a surprising number. Once you have the secret, forge a token with elevated claims and sign it with that secret; it will verify cleanly. (PortSwigger's weak-signing-key lab is exactly this.)</p>
+
+      <h2 id="header-injection">JWT header-parameter injection</h2>
+      <p>The header can carry parameters telling the verifier <em>which key</em> to trust. If the server believes them, you get to supply the key.</p>
+      <h3 id="jwk">Injecting via the <code>jwk</code> parameter</h3>
+      <p>The <code>jwk</code> header can embed a public key inline. Generate your own key pair, place your public key in <code>jwk</code>, edit the claims, and sign with your matching private key. A server that verifies against the embedded key accepts the forgery. Burp's JWT Editor automates this as <em>Attack → Embedded JWK</em>.</p>
+      <h3 id="jku">Injecting via the <code>jku</code> parameter</h3>
+      <p><code>jku</code> is a URL pointing to a JWKS. Host your own key set somewhere the server will fetch, point <code>jku</code> at it, and sign with your key. You may need to defeat an allow-list — sometimes via SSRF, an open redirect, or a URL the server already trusts.</p>
+      <h3 id="kid">Injecting via the <code>kid</code> parameter</h3>
+      <p><code>kid</code> selects a key by identifier. If it's used to build a <strong>file path</strong>, point it at a predictable file — the classic is <code>../../../../../dev/null</code> — so the "key" is empty, then sign with an empty key. If it's used in a <strong>SQL query</strong>, inject to return a value you control and use that as the key.</p>
+      <h3 id="other">Other interesting parameters</h3>
+      <p><code>x5c</code> and <code>x5u</code> are the certificate equivalents of <code>jwk</code> and <code>jku</code> and carry the same risks; <code>cty</code> (content type) and nested tokens can open further avenues. Treat <strong>every</strong> header parameter the server acts on as attacker-controlled.</p>
+
+      <h2 id="algorithm-confusion">Algorithm confusion</h2>
+      <p>The marquee attack — coercing a server that expects <code>RS256</code> into verifying a token you signed with <code>HS256</code>, using its own <em>public</em> key as the HMAC secret — is involved enough to get its own page.</p>
+      <p><a class="btn btn-primary btn-sm" href="algorithm-confusion.html">Algorithm confusion walkthrough →</a></p>
+
+      <h2 id="prevention">Preventing these attacks</h2>
+      <div class="callout tip">
+        <svg class="c-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12l5 5 9-10"/></svg>
+        <p><span class="c-title">Defender's checklist</span>Pin the accepted algorithm(s) and reject <code>none</code> (including case variants) · use a long, random HMAC secret · <strong>never</strong> trust <code>jwk</code>/<code>jku</code>/<code>kid</code>/<code>x5c</code>/<code>x5u</code> from the token — use server-configured keys only · validate <code>exp</code>, <code>aud</code> and <code>iss</code> · keep tokens short-lived. Full defensive detail in <a class="link" href="vulnerabilities.html">Vulnerabilities</a>.</p>
+      </div>
+
+      <h2 id="labs">Labs &amp; resources</h2>
+      <div class="res-grid">
+        <a class="res-card" href="https://portswigger.net/web-security/jwt" target="_blank" rel="noopener"><span class="r-type">Labs · Free</span><h3>PortSwigger — JWT</h3><p>The core JWT topic and its interactive labs.</p><span class="r-go">portswigger.net <svg class="ext" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 5h5v5M19 5l-8 8M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5"/></svg></span></a>
+        <a class="res-card" href="https://portswigger.net/web-security/jwt/algorithm-confusion" target="_blank" rel="noopener"><span class="r-type">Labs · Free</span><h3>PortSwigger — Algorithm confusion</h3><p>The dedicated topic, with labs for the key-confusion attack.</p><span class="r-go">portswigger.net <svg class="ext" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 5h5v5M19 5l-8 8M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5"/></svg></span></a>
+        <a class="res-card" href="https://portswigger.net/web-security/all-labs#jwt" target="_blank" rel="noopener"><span class="r-type">Labs · Index</span><h3>All JWT labs</h3><p>The full list of PortSwigger JWT labs in one place.</p><span class="r-go">portswigger.net <svg class="ext" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 5h5v5M19 5l-8 8M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5"/></svg></span></a>
+        <a class="res-card" href="https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/06-Session_Management_Testing/10-Testing_JSON_Web_Tokens" target="_blank" rel="noopener"><span class="r-type">OWASP · WSTG</span><h3>WSTG — Testing JWTs</h3><p>The OWASP testing guide's structured JWT test cases.</p><span class="r-go">owasp.org <svg class="ext" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 5h5v5M19 5l-8 8M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5"/></svg></span></a>
+        <a class="res-card" href="https://github.com/ticarpi/jwt_tool" target="_blank" rel="noopener"><span class="r-type">Tool</span><h3>jwt_tool</h3><p>The CLI used throughout this page — tamper, crack, and exploit.</p><span class="r-go">github.com/ticarpi <svg class="ext" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 5h5v5M19 5l-8 8M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5"/></svg></span></a>
+        <a class="res-card" href="https://snyk.io/blog/top-3-security-best-practices-for-handling-jwts/" target="_blank" rel="noopener"><span class="r-type">Guide · Defense</span><h3>Snyk — JWT best practices</h3><p>A concise defender's counterpoint to the attacks here.</p><span class="r-go">snyk.io <svg class="ext" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 5h5v5M19 5l-8 8M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5"/></svg></span></a>
+        <a class="res-card" href="https://www.intigriti.com/researchers/blog/hacking-tools/exploiting-jwt-vulnerabilities" target="_blank" rel="noopener"><span class="r-type">Write-up</span><h3>Intigriti — Exploiting JWTs</h3><p>A practical bug-bounty perspective on JWT exploitation.</p><span class="r-go">intigriti.com <svg class="ext" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 5h5v5M19 5l-8 8M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5"/></svg></span></a>
+        <a class="res-card" href="https://kleiton0x00.github.io/posts/json-web-token-exploitation/" target="_blank" rel="noopener"><span class="r-type">Write-up</span><h3>kleiton0x00 — JWT exploitation</h3><p>A hands-on walkthrough of common JWT exploits.</p><span class="r-go">kleiton0x00.github.io <svg class="ext" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 5h5v5M19 5l-8 8M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5"/></svg></span></a>
+      </div>
+
+      <hr class="divider">
+      <h2 id="next">Keep going</h2>
+      <div class="card-grid">
+        <a class="card hover topic-card" href="algorithm-confusion.html">
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v18M5 7l-2 3 2 3M5 7h6M19 14l2 3-2 3M19 20h-6"/></svg></span>
+          <h3>Algorithm Confusion</h3><p>The full RS256→HS256 key-confusion attack, step by step.</p>
+          <span class="more">Do the walkthrough →</span>
+        </a>
+        <a class="card hover topic-card" href="vulnerabilities.html">
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="8" y="7" width="8" height="11" rx="4"/><path d="M12 7V4M8 11H3M21 11h-5M8 16l-3 2M16 16l3 2"/></svg></span>
+          <h3>Vulnerabilities</h3><p>The same flaws from the defender's side — detection and prevention.</p>
+          <span class="more">Study the defenses →</span>
+        </a>
+      </div>
+    </article>
+    <div id="toc-slot"></div>
+  </main>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-clike.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+  <script src="../assets/js/jwt.js"></script>
+  <script src="../assets/js/site.js"></script>
+</body>
+</html>
