@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>JWT Cheat Sheet — Quick Reference · CipherToken</title>
+  <meta name="description" content="A one-page JWT quick reference: token structure, registered claims, the algorithm table, a security do/don't checklist, a secure verification snippet, recommended lifetimes, and status codes.">
+  <meta name="theme-color" content="#06080f">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="JWT Cheat Sheet — Quick Reference">
+  <meta property="og:description" content="Structure, claims, algorithms, the do/don't checklist, and a secure verify snippet — all on one page.">
+  <meta property="og:image" content="https://example.com/assets/img/og.svg">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="../assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Sora:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .cs-do-dont { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .cs-do-dont ul { margin: 0; padding: 1rem 1rem 1rem 2.1rem; }
+    .cs-do-dont li { font-size: .9rem; } .cs-do-dont li + li { margin-top: .4rem; }
+    @media (max-width:640px){ .cs-do-dont { grid-template-columns: 1fr; } }
+    .cs-mini { font-family: var(--f-mono); font-size: clamp(.8rem,1.4vw,.95rem); }
+  </style>
+</head>
+<body>
+  <main class="docs">
+    <article class="content">
+      <div class="page-head">
+        <nav class="breadcrumb"><a href="../index.html">Home</a> / <span>Reference</span> / <span class="muted">Cheat Sheet</span></nav>
+        <span class="eyebrow" style="margin-top:.9rem">Reference · Quick reference</span>
+        <h1>JWT cheat sheet</h1>
+        <p class="lead">The essentials on one page — structure, claims, algorithms, and the security rules that prevent most incidents. Bookmark it.</p>
+      </div>
+
+      <h2 id="structure">Structure</h2>
+      <div class="token-vis cs-mini">
+        <span class="tok h">header</span><span class="tok dot">.</span><span class="tok p">payload</span><span class="tok dot">.</span><span class="tok s">signature</span>
+      </div>
+      <div class="tok-legend">
+        <span><i class="lh"></i>Header — <code>alg</code>, <code>typ</code>, sometimes <code>kid</code></span>
+        <span><i class="lp"></i>Payload — the claims</span>
+        <span><i class="ls"></i>Signature — over <code>header.payload</code></span>
+      </div>
+      <p style="font-size:.9rem;margin-top:.7rem">Each part is <strong>Base64URL</strong> (encoding, not encryption). JWS = signed, 3 parts · <a class="link" href="jwe.html">JWE</a> = encrypted, 5 parts.</p>
+
+      <h2 id="claims">Registered claims</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Claim</th><th>Meaning</th><th>Check on verify?</th></tr></thead>
+          <tbody>
+            <tr><td><code>iss</code></td><td>Issuer</td><td>Yes — allow-list</td></tr>
+            <tr><td><code>sub</code></td><td>Subject (user ID)</td><td>Use as account key</td></tr>
+            <tr><td><code>aud</code></td><td>Audience</td><td>Yes — must be you</td></tr>
+            <tr><td><code>exp</code></td><td>Expiration</td><td>Yes — reject if past</td></tr>
+            <tr><td><code>nbf</code></td><td>Not before</td><td>Yes</td></tr>
+            <tr><td><code>iat</code></td><td>Issued at</td><td>Optional</td></tr>
+            <tr><td><code>jti</code></td><td>Token ID</td><td>For revocation lists</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="algorithms">Algorithms</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Family</th><th>Type</th><th>Use it?</th></tr></thead>
+          <tbody>
+            <tr><td><code>HS256/384/512</code></td><td>Symmetric (shared secret)</td><td>Single service</td></tr>
+            <tr><td><code>RS256/384/512</code></td><td>Asymmetric (RSA)</td><td>Interop / OIDC</td></tr>
+            <tr><td><code>PS256/384/512</code></td><td>Asymmetric (RSA-PSS)</td><td>Prefer over RS*</td></tr>
+            <tr><td><code>ES256/384/512</code></td><td>Asymmetric (ECDSA)</td><td>Recommended</td></tr>
+            <tr><td><code>EdDSA</code></td><td>Asymmetric (Ed25519)</td><td>Recommended (new)</td></tr>
+            <tr><td><code>none</code></td><td>Unsigned</td><td style="color:var(--danger)">Never</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="checklist">Security do &amp; don't</h2>
+      <div class="cs-do-dont">
+        <div class="vs-col good">
+          <div class="vs-head"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12l5 5 9-10"/></svg>Do</div>
+          <ul>
+            <li>Verify — never just decode</li>
+            <li>Pin the algorithm(s)</li>
+            <li>Validate <code>exp</code>, <code>aud</code>, <code>iss</code></li>
+            <li>Use long, random secrets / keys</li>
+            <li>Keep access tokens short; rotate refresh tokens</li>
+            <li>Store keys in a vault; rotate them</li>
+            <li>Prefer <code>HttpOnly</code> + <code>SameSite</code> cookies</li>
+          </ul>
+        </div>
+        <div class="vs-col bad">
+          <div class="vs-head"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 6l12 12M18 6L6 18"/></svg>Don't</div>
+          <ul>
+            <li>Trust <code>alg</code> from the token</li>
+            <li>Accept <code>none</code></li>
+            <li>Put secrets/PII in the payload</li>
+            <li>Use weak or hard-coded secrets</li>
+            <li>Trust token-supplied keys (<code>jku</code>/<code>jwk</code>)</li>
+            <li>Make access tokens long-lived</li>
+            <li>Catch verification errors and continue</li>
+          </ul>
+        </div>
+      </div>
+
+      <h2 id="verify">Secure verification</h2>
+      <pre data-file="verify.js"><code class="language-js">const claims = jwt.verify(token, KEY, {
+  algorithms: ['RS256'],                 // pin — defeats none & confusion
+  issuer:   'https://auth.example.com',  // iss
+  audience: 'https://api.example.com',   // aud
+});                                       // exp / nbf enforced; throws on failure</code></pre>
+      <p style="font-size:.9rem">Per-language versions: <a class="link" href="libraries.html">Libraries</a>.</p>
+
+      <h2 id="lifetimes">Lifetimes &amp; status codes</h2>
+      <div class="grid-2" style="gap:1rem">
+        <div class="table-wrap"><table>
+          <thead><tr><th>Token</th><th>Lifetime</th></tr></thead>
+          <tbody>
+            <tr><td>Access</td><td>5–15 min</td></tr>
+            <tr><td>Refresh</td><td>Hours–weeks (rotated)</td></tr>
+            <tr><td>Clock skew</td><td>≤ 1–2 min</td></tr>
+          </tbody>
+        </table></div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Code</th><th>Meaning</th></tr></thead>
+          <tbody>
+            <tr><td><code>401</code></td><td>Missing/invalid token</td></tr>
+            <tr><td><code>403</code></td><td>Valid token, no permission</td></tr>
+          </tbody>
+        </table></div>
+      </div>
+
+      <hr class="divider">
+      <h2 id="next">Go deeper</h2>
+      <div class="card-grid">
+        <a class="card hover topic-card" href="vulnerabilities.html">
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="8" y="7" width="8" height="11" rx="4"/><path d="M12 7V4M8 11H3M21 11h-5M8 16l-3 2M16 16l3 2"/></svg></span>
+          <h3>Vulnerabilities</h3><p>The threats behind every “don't” above.</p>
+          <span class="more">Study the flaws →</span>
+        </a>
+        <a class="card hover topic-card" href="playground.html">
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M10 9l5 3-5 3V9z" fill="currentColor"/></svg></span>
+          <h3>Playground</h3><p>Apply the cheat sheet against real tokens.</p>
+          <span class="more">Open playground →</span>
+        </a>
+      </div>
+    </article>
+    <div id="toc-slot"></div>
+  </main>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-clike.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+  <script src="../assets/js/jwt.js"></script>
+  <script src="../assets/js/site.js"></script>
+</body>
+</html>

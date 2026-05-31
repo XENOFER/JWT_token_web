@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>JWT FAQ — Common Questions Answered · CipherToken</title>
+  <meta name="description" content="Answers to the most common JWT questions: is a JWT encrypted, where to store tokens, how long they should last, how to revoke them, which algorithm to use, JWT vs OAuth, and more.">
+  <meta name="theme-color" content="#06080f">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="JWT FAQ — Common Questions Answered">
+  <meta property="og:description" content="Is a JWT encrypted? Where do I store it? How do I revoke one? Plain answers to the questions people actually ask.">
+  <meta property="og:image" content="https://example.com/assets/img/og.svg">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="../assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Sora:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+  <main class="docs">
+    <article class="content">
+      <div class="page-head">
+        <nav class="breadcrumb"><a href="../index.html">Home</a> / <span>Reference</span> / <span class="muted">FAQ</span></nav>
+        <span class="eyebrow" style="margin-top:.9rem">Reference · FAQ</span>
+        <h1>Frequently asked questions</h1>
+        <p class="lead">Short, straight answers to the questions that come up again and again — with a link to the chapter that goes deeper on each.</p>
+      </div>
+
+      <h2 id="basics">Basics</h2>
+      <div class="accordion">
+        <div class="acc-item">
+          <button class="acc-head">What does “JWT” mean, and how is it pronounced? <svg class="chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></button>
+          <div class="acc-body"><div class="acc-body-inner"><p>JSON Web Token. It's commonly pronounced “jot.” It's a compact, signed set of claims you can verify and trust. See <a class="link" href="what-is-jwt.html">What is a JWT?</a></p></div></div>
+        </div>
+        <div class="acc-item">
+          <button class="acc-head">Is a JWT encrypted? <svg class="chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></button>
+          <div class="acc-body"><div class="acc-body-inner"><p>No. A standard JWT (a JWS) is <em>signed</em>, not encrypted — its payload is Base64URL-encoded and readable by anyone holding it. If you need confidentiality, use <a class="link" href="jwe.html">JWE</a>.</p></div></div>
+        </div>
+        <div class="acc-item">
+          <button class="acc-head">Can I store sensitive data in a JWT? <svg class="chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></button>
+          <div class="acc-body"><div class="acc-body-inner"><p>Don't. The payload is readable, so treat anything in it as public. Keep secrets server-side, or encrypt the token. See <a class="link" href="structure.html#base64url">Structure</a>.</p></div></div>
+        </div>
+        <div class="acc-item">
+          <button class="acc-head">Are JWTs stateless? <svg class="chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></button>
+          <div class="acc-body"><div class="acc-body-inner"><p>Verifying an access token is stateless — no lookup needed. But refresh tokens and revocation usually still need storage, so “stateless” rarely means “no database.” See <a class="link" href="sessions-vs-jwt.html">Sessions vs JWT</a>.</p></div></div>
+        </div>
+        <div class="acc-item">
+          <button class="acc-head">JWT, OAuth, OIDC — what's the difference? <svg class="chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></button>
+          <div class="acc-body"><div class="acc-body-inner"><p>JWT is a token <em>format</em>; OAuth 2.0 is an authorization <em>framework</em>; OpenID Connect adds <em>authentication</em> on top of OAuth. They're often used together. See <a class="link" href="oauth-vs-jwt.html">OAuth vs JWT</a>.</p></div></div>
+        </div>
+      </div>
+
+      <h2 id="security">Security &amp; crypto</h2>
+      <div class="accordion">
+        <div class="acc-item">
+          <button class="acc-head">Are JWTs secure? <svg class="chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></button>
+          <div class="acc-body"><div class="acc-body-inner"><p>They can be, with correct handling. Most JWT incidents come from implementation mistakes — not pinning the algorithm, not verifying, weak secrets. See <a class="link" href="vulnerabilities.html">Vulnerabilities</a>.</p></div></div>
+        </div>
+        <div class="acc-item">
+          <button class="acc-head">Which algorithm should I use? <svg class="chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></button>
+          <div class="acc-body"><div class="acc-body-inner"><p>For a single service, <code>HS256</code> with a long random secret is fine. For multiple/third-party verifiers, go asymmetric — <strong>EdDSA</strong> or <strong>ES256</strong> for new systems, <strong>RS256</strong> for maximum interop. Never <code>none</code>. See <a class="link" href="algorithms.html#choosing">Algorithms</a>.</p></div></div>
+        </div>
+        <div class="acc-item">
+          <button class="acc-head">What is <code>alg: none</code> and why is it dangerous? <svg class="chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></button>
+          <div class="acc-body"><div class="acc-body-inner"><p>It's an unsigned token. Libraries that honour it accept a fully forged token, so a verifier must reject it outright. Try it in the <a class="link" href="playground.html#demos">attack demos</a>.</p></div></div>
+        </div>
+        <div class="acc-item">
+          <button class="acc-head">HS256 or RS256? <svg class="chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></button>
+          <div class="acc-body"><div class="acc-body-inner"><p><code>HS256</code> uses one shared secret (anyone who can verify can also sign) — good within one service. <code>RS256</code> uses a key pair, so verifiers only need the public key — better across services. See <a class="link" href="algorithms.html">Algorithms</a>.</p></div></div>
+        </div>
+        <div class="acc-item">
+          <button class="acc-head">Do I still need to validate claims if the signature is valid? <svg class="chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></button>
+          <div class="acc-body"><div class="acc-body-inner"><p>Yes. A valid signature doesn't mean a valid token — always check <code>exp</code>/<code>nbf</code>, and verify <code>aud</code> and <code>iss</code>. A perfectly signed but expired or misaddressed token must be rejected.</p></div></div>
+        </div>
+      </div>
+
+      <h2 id="building">Building with JWTs</h2>
+      <div class="accordion">
+        <div class="acc-item">
+          <button class="acc-head">Where should I store a JWT in the browser? <svg class="chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></button>
+          <div class="acc-body"><div class="acc-body-inner"><p>Prefer an <code>HttpOnly</code>, <code>Secure</code>, <code>SameSite</code> cookie so JavaScript can't read it (mitigating XSS theft), and pair it with CSRF defenses. <code>localStorage</code> is convenient but exposed to any script on the page. See <a class="link" href="vulnerabilities.html#v-storage">Vulnerabilities</a>.</p></div></div>
+        </div>
+        <div class="acc-item">
+          <button class="acc-head">How long should a token last? <svg class="chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></button>
+          <div class="acc-body"><div class="acc-body-inner"><p>Keep access tokens short — roughly 5–15 minutes — and use a longer-lived, rotating refresh token for continuity. See <a class="link" href="auth-flow.html#expiration">Auth Flow</a>.</p></div></div>
+        </div>
+        <div class="acc-item">
+          <button class="acc-head">What's the difference between access and refresh tokens? <svg class="chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></button>
+          <div class="acc-body"><div class="acc-body-inner"><p>The access token is short-lived and sent on every request; the refresh token is long-lived, sent only to the refresh endpoint, and used to get new access tokens. See <a class="link" href="auth-flow.html#the-cast">Auth Flow</a>.</p></div></div>
+        </div>
+        <div class="acc-item">
+          <button class="acc-head">How do I log a user out or revoke a JWT? <svg class="chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></button>
+          <div class="acc-body"><div class="acc-body-inner"><p>You can't “delete” a signed token before it expires. Discard it client-side, revoke the refresh token server-side (rotation helps), keep access tokens short, and use a <code>jti</code> denylist for instant revocation. See <a class="link" href="auth-flow.html#logout">Auth Flow</a>.</p></div></div>
+        </div>
+        <div class="acc-item">
+          <button class="acc-head">Should I use JWTs or sessions? <svg class="chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></button>
+          <div class="acc-body"><div class="acc-body-inner"><p>Sessions for single, server-rendered apps and where instant revocation matters; JWTs for stateless APIs, microservices, and SSO. Often a hybrid is best. See <a class="link" href="sessions-vs-jwt.html">Sessions vs JWT</a>.</p></div></div>
+        </div>
+        <div class="acc-item">
+          <button class="acc-head">How do I verify a JWT correctly? <svg class="chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></button>
+          <div class="acc-body"><div class="acc-body-inner"><p>Use a maintained library, <strong>pin the algorithm</strong>, and validate <code>exp</code>/<code>aud</code>/<code>iss</code> — never just decode. See language examples in <a class="link" href="libraries.html">Libraries</a>.</p></div></div>
+        </div>
+      </div>
+
+      <hr class="divider">
+      <h2 id="next">Keep going</h2>
+      <div class="card-grid">
+        <a class="card hover topic-card" href="glossary.html">
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 5a2 2 0 012-2h12v16H6a2 2 0 00-2 2V5z"/><path d="M18 3v18"/></svg></span>
+          <h3>Glossary</h3><p>Every term you've seen, defined in a line.</p>
+          <span class="more">Open the glossary →</span>
+        </a>
+        <a class="card hover topic-card" href="playground.html">
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M10 9l5 3-5 3V9z" fill="currentColor"/></svg></span>
+          <h3>Playground</h3><p>Stop reading, start decoding — try it yourself.</p>
+          <span class="more">Open playground →</span>
+        </a>
+      </div>
+    </article>
+    <div id="toc-slot"></div>
+  </main>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="../assets/js/jwt.js"></script>
+  <script src="../assets/js/site.js"></script>
+</body>
+</html>

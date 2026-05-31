@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>JWT Glossary — Every Term Defined · CipherToken</title>
+  <meta name="description" content="A complete glossary of JSON Web Token and authentication terms: claims, algorithms, JWS/JWE/JWK/JWKS, bearer, DPoP, OAuth, OIDC, PKCE, refresh tokens and more — each defined in one line.">
+  <meta name="theme-color" content="#06080f">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="JWT Glossary — Every Term Defined">
+  <meta property="og:description" content="Claims, algorithms, JWS/JWE/JWK, bearer, DPoP, OAuth, OIDC — the whole JWT vocabulary in one place.">
+  <meta property="og:image" content="https://example.com/assets/img/og.svg">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="../assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Sora:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .az-bar { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: 2rem; position: sticky; top: calc(var(--nav-h) + 8px); background: var(--bg); padding: .5rem 0; z-index: 5; }
+    .az-bar a { width: 32px; height: 32px; display: grid; place-items: center; border: 1px solid var(--border); border-radius: 8px; font-family: var(--f-mono); font-size: .8rem; font-weight: 700; color: var(--text-2); transition: all .16s var(--ease); }
+    .az-bar a:hover { border-color: var(--accent); color: var(--accent); transform: translateY(-2px); }
+    .letter { font-family: var(--f-mono); font-size: .95rem; font-weight: 700; color: var(--accent); letter-spacing: .12em; border-bottom: 1px solid var(--border); padding-bottom: .45rem; margin: 2.2rem 0 1rem; scroll-margin-top: calc(var(--nav-h) + 70px); }
+    .gloss { margin: 0; }
+    .gloss dt { font-family: var(--f-display); font-weight: 700; color: var(--text); margin-top: 1.1rem; font-size: 1.02rem; }
+    .gloss dt:first-of-type { margin-top: 0; }
+    .gloss dd { margin: .2rem 0 0; color: var(--text-2); font-size: .94rem; line-height: 1.6; }
+    .gloss dd a.link { color: var(--accent); border-bottom: 1px solid rgba(70,224,224,.35); }
+  </style>
+</head>
+<body>
+  <main class="docs no-toc">
+    <article class="content" style="max-width:880px">
+      <div class="page-head">
+        <nav class="breadcrumb"><a href="../index.html">Home</a> / <span>Reference</span> / <span class="muted">Glossary</span></nav>
+        <span class="eyebrow" style="margin-top:.9rem">Reference · Glossary</span>
+        <h1>Glossary</h1>
+        <p class="lead">Every term used across the academy, defined in a line. Jump by letter, and follow the links to the chapter that covers each idea in depth.</p>
+      </div>
+
+      <div class="az-bar">
+        <a href="#g-a">A</a><a href="#g-b">B</a><a href="#g-c">C</a><a href="#g-d">D</a><a href="#g-e">E</a><a href="#g-h">H</a><a href="#g-i">I</a><a href="#g-j">J</a><a href="#g-k">K</a><a href="#g-n">N</a><a href="#g-o">O</a><a href="#g-p">P</a><a href="#g-r">R</a><a href="#g-s">S</a><a href="#g-t">T</a>
+      </div>
+
+      <div class="letter" id="g-a">A</div>
+      <dl class="gloss">
+        <dt>Access token</dt><dd>A short-lived token presented on each request to reach protected resources. See <a class="link" href="auth-flow.html">Auth Flow</a>.</dd>
+        <dt>Algorithm (<code>alg</code>)</dt><dd>The signing or encryption method named in a token's header, e.g. <code>HS256</code> or <code>RS256</code>. See <a class="link" href="algorithms.html">Algorithms</a>.</dd>
+        <dt>Assertion</dt><dd>A package of claims about a subject, presented to a relying party; a JWT is one form of assertion.</dd>
+        <dt>Asymmetric</dt><dd>Cryptography using a key pair — a private key signs, a public key verifies.</dd>
+        <dt>Audience (<code>aud</code>)</dt><dd>The intended recipient of a token; a verifier rejects tokens not addressed to it.</dd>
+        <dt>Authentication</dt><dd>Establishing <em>who</em> a party is — distinct from authorization.</dd>
+        <dt>Authorization</dt><dd>Determining <em>what</em> a party is allowed to do.</dd>
+      </dl>
+
+      <div class="letter" id="g-b">B</div>
+      <dl class="gloss">
+        <dt>Base64URL</dt><dd>A URL-safe, fully reversible text encoding used for a JWT's parts. It is encoding, <strong>not</strong> encryption. See <a class="link" href="structure.html#base64url">Structure</a>.</dd>
+        <dt>Bearer token</dt><dd>A token usable by whoever holds it, with no additional proof of identity required.</dd>
+      </dl>
+
+      <div class="letter" id="g-c">C</div>
+      <dl class="gloss">
+        <dt>Claim</dt><dd>A single statement (key/value) inside a token's payload, such as <code>sub</code> or <code>role</code>. See <a class="link" href="structure.html#payload">Structure</a>.</dd>
+        <dt>Confirmation (<code>cnf</code>)</dt><dd>A claim that binds a token to a holder's key, used by DPoP and mTLS. See <a class="link" href="dpop.html">DPoP</a>.</dd>
+      </dl>
+
+      <div class="letter" id="g-d">D</div>
+      <dl class="gloss">
+        <dt>DPoP</dt><dd>Demonstrating Proof-of-Possession — binds a token to a client's key so a stolen token alone is useless. See <a class="link" href="dpop.html">DPoP</a>.</dd>
+      </dl>
+
+      <div class="letter" id="g-e">E</div>
+      <dl class="gloss">
+        <dt>ECDSA (<code>ES256/384/512</code>)</dt><dd>Elliptic-curve signatures — small, fast, asymmetric. See <a class="link" href="algorithms.html">Algorithms</a>.</dd>
+        <dt>EdDSA</dt><dd>Modern Edwards-curve signatures; fast, deterministic, and misuse-resistant.</dd>
+        <dt>Expiration (<code>exp</code>)</dt><dd>The Unix time after which a token must be rejected.</dd>
+      </dl>
+
+      <div class="letter" id="g-h">H</div>
+      <dl class="gloss">
+        <dt>Header</dt><dd>The first JWT segment, declaring the algorithm (<code>alg</code>) and type (<code>typ</code>).</dd>
+        <dt>HMAC (<code>HS256/384/512</code>)</dt><dd>A symmetric keyed-hash signature using a shared secret. See <a class="link" href="algorithms.html">Algorithms</a>.</dd>
+      </dl>
+
+      <div class="letter" id="g-i">I</div>
+      <dl class="gloss">
+        <dt>ID token</dt><dd>An OpenID Connect JWT that asserts a user's identity to an application. See <a class="link" href="openid-connect.html">OpenID Connect</a>.</dd>
+        <dt>Introspection</dt><dd>Asking the issuer whether an (opaque) token is currently valid — RFC 7662. See <a class="link" href="jwt-alternatives.html#opaque">Alternatives</a>.</dd>
+        <dt>Issued At (<code>iat</code>)</dt><dd>The time at which a token was created.</dd>
+        <dt>Issuer (<code>iss</code>)</dt><dd>Who created and signed a token; verified against an allow-list.</dd>
+      </dl>
+
+      <div class="letter" id="g-j">J</div>
+      <dl class="gloss">
+        <dt>JOSE</dt><dd>The family of JSON object signing and encryption standards (JWS, JWE, JWK, JWA).</dd>
+        <dt>JTI (<code>jti</code>)</dt><dd>A unique token identifier, useful for revocation lists.</dd>
+        <dt><code>jku</code></dt><dd>A header naming a URL for the key set — dangerous if trusted from the token. See <a class="link" href="vulnerabilities.html#v-jku">Vulnerabilities</a>.</dd>
+        <dt>JWA</dt><dd>JSON Web Algorithms — the algorithm registry (RFC 7518).</dd>
+        <dt>JWE</dt><dd>JSON Web Encryption — an encrypted token with five parts. See <a class="link" href="jwe.html">JWE</a>.</dd>
+        <dt>JWK</dt><dd>JSON Web Key — a single key represented in JSON.</dd>
+        <dt>JWKS</dt><dd>JSON Web Key Set — a published set of public keys. See <a class="link" href="jwks-key-rotation.html">JWKS</a>.</dd>
+        <dt>JWS</dt><dd>JSON Web Signature — a signed token with three parts; the everyday "JWT".</dd>
+        <dt>JWT</dt><dd>JSON Web Token — a compact, signed (or encrypted) set of claims. See <a class="link" href="what-is-jwt.html">What is a JWT?</a></dd>
+      </dl>
+
+      <div class="letter" id="g-k">K</div>
+      <dl class="gloss">
+        <dt>kid (Key ID)</dt><dd>A header identifying which key signed the token; treat it as an opaque lookup. See <a class="link" href="jwks-key-rotation.html#kid">JWKS</a>.</dd>
+      </dl>
+
+      <div class="letter" id="g-n">N</div>
+      <dl class="gloss">
+        <dt>Nonce</dt><dd>A one-time value (e.g. in OIDC) preventing replay; the ID token echoes it back. See <a class="link" href="openid-connect.html">OpenID Connect</a>.</dd>
+        <dt>Not Before (<code>nbf</code>)</dt><dd>The time before which a token is not yet valid.</dd>
+      </dl>
+
+      <div class="letter" id="g-o">O</div>
+      <dl class="gloss">
+        <dt>OAuth 2.0</dt><dd>An authorization framework for granting delegated access. See <a class="link" href="oauth-vs-jwt.html">OAuth vs JWT</a>.</dd>
+        <dt>OpenID Connect (OIDC)</dt><dd>An authentication layer on top of OAuth 2.0 that issues ID tokens. See <a class="link" href="openid-connect.html">OpenID Connect</a>.</dd>
+        <dt>Opaque token</dt><dd>A reference token with no readable contents, validated by introspection. See <a class="link" href="jwt-alternatives.html#opaque">Alternatives</a>.</dd>
+      </dl>
+
+      <div class="letter" id="g-p">P</div>
+      <dl class="gloss">
+        <dt>PASETO</dt><dd>A safer JWT alternative with versioned, pinned cryptography. See <a class="link" href="jwt-alternatives.html#paseto">Alternatives</a>.</dd>
+        <dt>Payload</dt><dd>The second JWT segment, holding the claims.</dd>
+        <dt>PKCE</dt><dd>Proof Key for Code Exchange — protects the OAuth authorization code from interception. See <a class="link" href="openid-connect.html#pkce">OpenID Connect</a>.</dd>
+        <dt>Private claim</dt><dd>A custom claim agreed privately between parties, e.g. <code>role</code>.</dd>
+        <dt>Public claim</dt><dd>A custom claim namespaced (often as a URI) to avoid collisions.</dd>
+      </dl>
+
+      <div class="letter" id="g-r">R</div>
+      <dl class="gloss">
+        <dt>Refresh token</dt><dd>A long-lived token exchanged for new access tokens. See <a class="link" href="auth-flow.html#refresh">Auth Flow</a>.</dd>
+        <dt>Registered claim</dt><dd>A standard claim defined by the spec: <code>iss</code>, <code>sub</code>, <code>aud</code>, <code>exp</code>, <code>nbf</code>, <code>iat</code>, <code>jti</code>.</dd>
+        <dt>Replay attack</dt><dd>Re-sending a captured token to impersonate its owner. See <a class="link" href="vulnerabilities.html#v-replay">Vulnerabilities</a>.</dd>
+        <dt>RSA (<code>RS256/384/512</code>)</dt><dd>Widely-supported asymmetric signatures with large keys and signatures.</dd>
+        <dt>Rotation</dt><dd>Periodically replacing signing keys (or refresh tokens) to limit blast radius. See <a class="link" href="jwks-key-rotation.html#rotation">JWKS &amp; Rotation</a>.</dd>
+      </dl>
+
+      <div class="letter" id="g-s">S</div>
+      <dl class="gloss">
+        <dt>Scope</dt><dd>An OAuth permission string limiting what an access token can do.</dd>
+        <dt>Session</dt><dd>Server-side authentication state referenced by an opaque cookie ID. See <a class="link" href="sessions-vs-jwt.html">Sessions vs JWT</a>.</dd>
+        <dt>Signature</dt><dd>The third JWT segment, proving integrity and authenticity.</dd>
+        <dt>Subject (<code>sub</code>)</dt><dd>The principal a token is about, e.g. a user ID — the durable identifier to key accounts on.</dd>
+        <dt>Symmetric</dt><dd>Cryptography using one shared secret to both sign and verify.</dd>
+      </dl>
+
+      <div class="letter" id="g-t">T</div>
+      <dl class="gloss">
+        <dt>Token exchange</dt><dd>Trading one token for another with different scope or audience — RFC 8693. See <a class="link" href="service-to-service.html#token-exchange">Service-to-Service</a>.</dd>
+        <dt><code>typ</code></dt><dd>A header field declaring the token type, usually <code>"JWT"</code>.</dd>
+      </dl>
+
+      <hr class="divider">
+      <h2 id="next" style="font-size:1.3rem">Keep going</h2>
+      <div class="card-grid">
+        <a class="card hover topic-card" href="cheat-sheet.html">
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></svg></span>
+          <h3>Cheat Sheet</h3><p>The one-page quick reference: claims, algorithms, and the do/don't checklist.</p>
+          <span class="more">Open the cheat sheet →</span>
+        </a>
+        <a class="card hover topic-card" href="faq.html">
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 5a2 2 0 012-2h12v16H6a2 2 0 00-2 2V5z"/><path d="M18 3v18"/></svg></span>
+          <h3>FAQ</h3><p>Plain answers to the questions people ask most about JWTs.</p>
+          <span class="more">Read the FAQ →</span>
+        </a>
+      </div>
+    </article>
+  </main>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="../assets/js/jwt.js"></script>
+  <script src="../assets/js/site.js"></script>
+</body>
+</html>
