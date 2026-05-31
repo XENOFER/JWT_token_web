@@ -38,14 +38,14 @@
    { title: "Get Started", num: "01", items: [
      { t: "Home", href: "index.html", ic: "book", kw: "introduction overview start", built: true },
      { t: "What is JWT?", href: "pages/what-is-jwt.html", ic: "book", kw: "stateless session authentication lifecycle", built: true },
-     { t: "Sessions vs JWT", href: "pages/sessions-vs-jwt.html", ic: "compare", kw: "stateful stateless cookie when not to use revocation", built: false },
+     { t: "Sessions vs JWT", href: "pages/sessions-vs-jwt.html", ic: "compare", kw: "stateful stateless cookie when not to use revocation", built: true },
      { t: "Token Structure", href: "pages/structure.html", ic: "layers", kw: "header payload signature base64url claims decode", built: true },
      { t: "Algorithms", href: "pages/algorithms.html", ic: "key", kw: "hs256 rs256 es256 eddsa hmac rsa ecdsa none symmetric asymmetric", built: true }
    ]},
    { title: "Authentication", num: "02", items: [
      { t: "Auth Flow", href: "pages/auth-flow.html", ic: "flow", kw: "login access refresh token bearer rotation expiration", built: true },
      { t: "OAuth vs JWT", href: "pages/oauth-vs-jwt.html", ic: "compare", kw: "oauth2 openid connect session comparison", built: true },
-     { t: "OpenID Connect", href: "pages/openid-connect.html", ic: "lock", kw: "oidc id token authorization code pkce sso login", built: false }
+     { t: "OpenID Connect", href: "pages/openid-connect.html", ic: "lock", kw: "oidc id token authorization code pkce sso login", built: true }
    ]},
    { title: "Security", num: "03", items: [
      { t: "Vulnerabilities", href: "pages/vulnerabilities.html", ic: "bug", kw: "none algorithm confusion kid jku jwk tampering weak secret replay xss csrf", built: true },
@@ -56,8 +56,8 @@
      { t: "JWE (Encryption)", href: "pages/jwe.html", ic: "lock", kw: "jwe encrypted confidentiality jws nested enc alg rsa-oaep a256gcm", built: true },
      { t: "JWKS & Key Rotation", href: "pages/jwks-key-rotation.html", ic: "key", kw: "jwks kid key set rotation well-known discovery jwks_uri", built: true },
      { t: "DPoP / Binding", href: "pages/dpop.html", ic: "shield", kw: "dpop sender constrained proof of possession cnf jkt mtls bearer replay", built: true },
-     { t: "Service-to-Service", href: "pages/service-to-service.html", ic: "flow", kw: "microservice m2m token exchange mtls propagation client credentials", built: false },
-     { t: "JWT Alternatives", href: "pages/jwt-alternatives.html", ic: "compare", kw: "paseto branca macaroons opaque tokens comparison", built: false }
+     { t: "Service-to-Service", href: "pages/service-to-service.html", ic: "flow", kw: "microservice m2m token exchange mtls propagation client credentials", built: true },
+     { t: "JWT Alternatives", href: "pages/jwt-alternatives.html", ic: "compare", kw: "paseto branca macaroons opaque tokens comparison", built: true }
    ]},
    { title: "Practice", num: "05", items: [
      { t: "Playground", href: "pages/playground.html", ic: "play", kw: "encoder decoder verify sign hs256 interactive", built: true },
