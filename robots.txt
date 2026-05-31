@@ -3,4 +3,4 @@ Allow: /
 Disallow: /pages/soon.html
 
 # Replace with your deployed domain
-Sitemap: https://example.com/sitemap.xml
+Sitemap: https://xenofer.github.io/sitemap.xml
