@@ -67,9 +67,9 @@
    { title: "Reference", num: "06", items: [
      { t: "Resources", href: "pages/resources.html", ic: "link", kw: "owasp portswigger rfc 7519 jwt.io books github", built: true },
      { t: "Roadmaps", href: "pages/roadmaps.html", ic: "map", kw: "beginner advanced api security learning path", built: true },
-     { t: "Glossary", href: "pages/glossary.html", ic: "book", kw: "terms definitions claim bearer jws jwe jwk nbf glossary", built: false },
-     { t: "FAQ", href: "pages/faq.html", ic: "book", kw: "questions answers common faq", built: false },
-     { t: "Cheat Sheet", href: "pages/cheat-sheet.html", ic: "layers", kw: "quick reference claims algorithms checklist cheatsheet", built: false }
+     { t: "Glossary", href: "pages/glossary.html", ic: "book", kw: "terms definitions claim bearer jws jwe jwk nbf glossary", built: true },
+     { t: "FAQ", href: "pages/faq.html", ic: "book", kw: "questions answers common faq", built: true },
+     { t: "Cheat Sheet", href: "pages/cheat-sheet.html", ic: "layers", kw: "quick reference claims algorithms checklist cheatsheet", built: true }
    ]}
  ];
   const NAV_TOP = [
