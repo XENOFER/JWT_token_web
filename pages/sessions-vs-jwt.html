@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sessions vs JWT — When Not to Use JWT · CipherToken</title>
+  <meta name="description" content="An honest decision guide: server-side sessions versus stateless JWTs. The real trade-offs, the revocation problem, when sessions are the better choice, when JWTs shine, the hybrid middle ground, and the myths to ignore.">
+  <meta name="theme-color" content="#06080f">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Sessions vs JWT — When Not to Use JWT">
+  <meta property="og:description" content="Don't default to JWT. A clear-eyed comparison of sessions and tokens, with a decision checklist.">
+  <meta property="og:image" content="https://example.com/assets/img/og.svg">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="../assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Sora:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+  <main class="docs">
+    <article class="content">
+      <div class="page-head">
+        <nav class="breadcrumb"><a href="../index.html">Home</a> / <span>Get Started</span> / <span class="muted">Sessions vs JWT</span></nav>
+        <span class="eyebrow" style="margin-top:.9rem">Get Started · Decision guide</span>
+        <h1>Sessions vs JWT</h1>
+        <p class="lead">JWTs are popular, which is exactly why they're often the wrong default. They're a genuine improvement for some problems and a needless liability for others. This chapter is the honest comparison — including the cases where a plain old session is simply the better engineering choice.</p>
+      </div>
+
+      <h2 id="recap">Two models, quickly</h2>
+      <p>A <strong>session</strong> keeps state on the server: you log in, the server stores a record and gives your browser a random ID in a cookie, and every request is validated by looking that ID up. A <strong>JWT</strong> keeps state in the token: the server signs your claims and hands them over, then later trusts them by checking the signature — no lookup. (For the full mechanics, see <a class="link" href="what-is-jwt.html">What is a JWT?</a>)</p>
+      <p>That single difference — <em>where the state lives</em> — cascades into every trade-off below.</p>
+
+      <h2 id="tradeoffs">The trade-offs that matter</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Dimension</th><th>Server-side session</th><th>JWT</th></tr></thead>
+          <tbody>
+            <tr><td>State</td><td>On the server</td><td>In the token</td></tr>
+            <tr><td>Scaling</td><td>Needs shared store (e.g. Redis)</td><td>Any node verifies independently</td></tr>
+            <tr><td>Revocation</td><td>Instant — delete the record</td><td>Hard until expiry</td></tr>
+            <tr><td>Per-request cost</td><td>A store lookup</td><td>A signature check</td></tr>
+            <tr><td>Data exposure</td><td>Opaque ID only</td><td>Payload readable by holder</td></tr>
+            <tr><td>Cross-service / SSO</td><td>Awkward</td><td>Natural fit</td></tr>
+            <tr><td>Complexity</td><td>Low, well-trodden</td><td>Higher (keys, refresh, validation)</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="revocation">The revocation problem</h2>
+      <p>This is the trade-off people underestimate, so it gets its own section. With sessions, logging someone out — or banning them instantly — is a single delete. With JWTs, a signed token stays valid until its <code>exp</code> no matter what; there's nothing to delete. You can <em>approximate</em> revocation (short lifetimes, a <code>jti</code> denylist), but you can't get true instant revocation for free.</p>
+      <div class="callout warn" style="margin-top:1rem">
+        <svg class="c-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M12 3l9 16H3z"/><path d="M12 9v4M12 16v.5"/></svg>
+        <p><span class="c-title">If instant revocation is a hard requirement</span>…then pure stateless JWTs are fighting you. Use sessions, or a hybrid (below). “Ban this user right now” should not require waiting fifteen minutes for a token to expire.</p>
+      </div>
+
+      <h2 id="when-sessions">When sessions are the better choice</h2>
+      <ul>
+        <li><strong>Server-rendered, first-party web apps</strong> — a cookie and a session store are simpler and battle-tested.</li>
+        <li><strong>A single backend or a monolith</strong> — there's no fleet of services that needs to verify tokens independently.</li>
+        <li><strong>Instant logout / ban is required</strong> — banking, admin panels, anything with strict access control.</li>
+        <li><strong>You value simplicity</strong> — fewer moving parts (no key management, refresh dance, or claim-validation bugs).</li>
+      </ul>
+
+      <h2 id="when-jwt">When JWTs shine</h2>
+      <ul>
+        <li><strong>Stateless APIs</strong> consumed by many clients, where you don't want a lookup per request.</li>
+        <li><strong>Microservices</strong> that each need to verify identity without a shared session store.</li>
+        <li><strong>Third-party verification &amp; SSO</strong> — hand out a public key and anyone can verify (see <a class="link" href="oauth-vs-jwt.html">OAuth vs JWT</a>).</li>
+        <li><strong>Serverless / edge</strong>, where there's no persistent session infrastructure.</li>
+      </ul>
+
+      <h2 id="hybrid">The hybrid middle ground</h2>
+      <p>You don't have to choose purely. The most common production pattern blends both: <strong>short-lived JWT access tokens</strong> (stateless, fast, verified anywhere) paired with <strong>server-stored refresh tokens</strong> (revocable, long-lived). You get stateless verification on the hot path and real revocation control where it counts. Variations include “stateful JWTs” checked against a denylist, or opaque reference tokens validated by introspection (see <a class="link" href="jwt-alternatives.html">JWT Alternatives</a>).</p>
+      <div class="callout tip" style="margin-top:1rem">
+        <svg class="c-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12l5 5 9-10"/></svg>
+        <p><span class="c-title">Best of both</span>Stateless access token (minutes) + revocable refresh token (server-side). This is what the <a class="link" href="auth-flow.html">Auth Flow</a> chapter describes — and it's the right default for most token-based APIs.</p>
+      </div>
+
+      <h2 id="decision">A quick decision check</h2>
+      <div class="steps">
+        <div class="step"><div class="s-num">1</div><div class="s-body"><h4>Is it a single, first-party, server-rendered app?</h4><p>Lean <strong>sessions</strong>. You won't miss the complexity.</p></div></div>
+        <div class="step"><div class="s-num">2</div><div class="s-body"><h4>Do multiple services or third parties need to verify identity?</h4><p>Lean <strong>JWT</strong> (asymmetric), so verification doesn't need a shared store.</p></div></div>
+        <div class="step"><div class="s-num">3</div><div class="s-body"><h4>Do you need to revoke access instantly?</h4><p>Use <strong>sessions</strong> or the <strong>hybrid</strong> model — not pure stateless JWTs.</p></div></div>
+        <div class="step"><div class="s-num">4</div><div class="s-body"><h4>Still unsure?</h4><p>Default to <strong>sessions</strong> for browser-only apps and the <strong>hybrid</strong> for APIs. Reach for pure JWT only when statelessness is a real, measured need.</p></div></div>
+      </div>
+
+      <h2 id="myths">Myths worth ignoring</h2>
+      <div class="accordion">
+        <div class="acc-item">
+          <button class="acc-head">“JWTs are more secure than sessions” <svg class="chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></button>
+          <div class="acc-body"><div class="acc-body-inner"><p>Neither is inherently more secure. Sessions have a smaller attack surface and instant revocation; JWTs add signing and key-management concerns. Security comes from correct implementation, not the choice itself.</p></div></div>
+        </div>
+        <div class="acc-item">
+          <button class="acc-head">“JWTs mean you don't need a database” <svg class="chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></button>
+          <div class="acc-body"><div class="acc-body-inner"><p>Access-token verification is stateless, but refresh tokens, rotation, and revocation lists usually need storage anyway. The “no database” promise rarely survives real requirements.</p></div></div>
+        </div>
+        <div class="acc-item">
+          <button class="acc-head">“Sessions don't scale” <svg class="chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></button>
+          <div class="acc-body"><div class="acc-body-inner"><p>A shared store like Redis handles enormous session volumes with sub-millisecond lookups. “Sessions don't scale” is usually premature optimisation, not a real constraint.</p></div></div>
+        </div>
+      </div>
+
+      <hr class="divider">
+      <h2 id="next">Keep going</h2>
+      <div class="card-grid">
+        <a class="card hover topic-card" href="auth-flow.html">
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="7" height="5" rx="1.5"/><rect x="14" y="15" width="7" height="5" rx="1.5"/><path d="M6.5 9v4a2 2 0 002 2h5.5"/></svg></span>
+          <h3>Auth Flow</h3><p>The hybrid model in detail — access + refresh tokens done right.</p>
+          <span class="more">Walk the flow →</span>
+        </a>
+        <a class="card hover topic-card" href="soon.html?t=Best%20Practices">
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l8 3v6c0 5-3.4 7.8-8 9-4.6-1.2-8-4-8-9V6l8-3z"/></svg></span>
+          <h3>Best Practices</h3><p>If you do choose JWTs, here's how to keep them safe.</p>
+          <span class="more">Coming soon →</span>
+        </a>
+      </div>
+    </article>
+    <div id="toc-slot"></div>
+  </main>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="../assets/js/jwt.js"></script>
+  <script src="../assets/js/site.js"></script>
+</body>
+</html>

@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>JWT Alternatives — PASETO, Branca, Macaroons &amp; Opaque Tokens · CipherToken</title>
+  <meta name="description" content="JWT isn't the only token format. A tour of the alternatives — PASETO, Branca, Macaroons, and opaque tokens with introspection — what each fixes about JWT, a comparison table, and how to choose.">
+  <meta name="theme-color" content="#06080f">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="JWT Alternatives — PASETO, Branca, Macaroons & Opaque Tokens">
+  <meta property="og:description" content="What PASETO, Branca, Macaroons, and opaque tokens fix about JWT — and when to prefer them.">
+  <meta property="og:image" content="https://example.com/assets/img/og.svg">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="../assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Sora:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>.tok-paseto .v{color:var(--t-header)}.tok-paseto .p{color:#ffb86b}.tok-paseto .b{color:var(--t-payload)}.tok-paseto .s{color:var(--t-sig)}</style>
+</head>
+<body>
+  <main class="docs">
+    <article class="content">
+      <div class="page-head">
+        <nav class="breadcrumb"><a href="../index.html">Home</a> / <span>Advanced</span> / <span class="muted">JWT Alternatives</span></nav>
+        <span class="eyebrow" style="margin-top:.9rem">Advanced · Comparison</span>
+        <h1>JWT alternatives</h1>
+        <p class="lead">JWT won the popularity contest, but it isn't the only way to carry a token — and several of its sharpest edges (algorithm agility, <code>none</code>, format complexity) simply don't exist in the alternatives. Knowing them makes you a better engineer, even if you stick with JWT.</p>
+      </div>
+
+      <h2 id="why-consider">Why look beyond JWT?</h2>
+      <p>Most JWT vulnerabilities trace back to its <em>flexibility</em>: the header lets a token declare its own algorithm, which is the root of <a class="link" href="vulnerabilities.html#v-confusion">algorithm confusion</a> and <a class="link" href="vulnerabilities.html#v-none"><code>none</code></a>. The alternatives below take different stances — some remove algorithm choice entirely, some drop client-readable claims, some add powerful delegation. None is a silver bullet, but each is worth knowing.</p>
+
+      <h2 id="paseto">PASETO</h2>
+      <p><strong>PASETO</strong> (Platform-Agnostic Security Tokens) is the most direct “safer JWT.” Instead of a negotiable <code>alg</code> header, it ships <strong>versioned protocols</strong>: each version pins one modern, vetted cipher suite, so there's no algorithm field to attack and no <code>none</code>. Tokens also declare a <strong>purpose</strong> — <code>local</code> (symmetric, encrypted) or <code>public</code> (asymmetric, signed):</p>
+      <div class="token-vis tok-paseto">
+        <span class="v">v4</span><span class="tok dot">.</span><span class="p">public</span><span class="tok dot">.</span><span class="b">eyJzdWIiOiIxMDI0Ii4uLn0</span><span class="tok dot">.</span><span class="s">Q2pK…signature</span>
+      </div>
+      <p style="font-size:.86rem;color:var(--text-3);font-family:var(--f-mono);margin-top:.5rem">version · purpose · payload · authentication</p>
+      <p>The shape resembles a JWT, but the crucial difference is up front: <code>v4.public</code> fully determines the cryptography. There is no “pick your algorithm,” which closes a whole class of attacks by design. PASETO is an excellent default when you control both issuer and verifier and want JWT-like ergonomics with safer guarantees.</p>
+
+      <h2 id="branca">Branca</h2>
+      <p><strong>Branca</strong> is a compact, opaque token using authenticated encryption (XChaCha20-Poly1305) with a built-in timestamp. The contents are always encrypted, so unlike a JWS there's nothing readable inside, and the format is deliberately tiny and rigid. It's a good fit for stateless, symmetric, encrypted tokens where you don't need a public-key model.</p>
+
+      <h2 id="macaroons">Macaroons</h2>
+      <p><strong>Macaroons</strong> bring a trick the others don't: <strong>attenuation</strong>. A holder can add <em>caveats</em> — extra restrictions like “read-only” or “expires in 5 minutes” — to a macaroon <em>without</em> the signing key, producing a more limited token. That makes them powerful for delegation: hand someone a narrowed token they can narrow further but never broaden. The trade-off is conceptual complexity and a smaller ecosystem.</p>
+
+      <h2 id="opaque">Opaque tokens + introspection</h2>
+      <p>The oldest alternative is to make the token carry <em>no</em> information at all: a random <strong>reference</strong> string. The resource server validates it by calling the authorization server's <strong>introspection</strong> endpoint (RFC 7662), which returns whether it's active and its claims. This is essentially stateful — which means <strong>instant revocation</strong> is trivial and nothing is client-readable — at the cost of a network call (usually cached) per validation. Classic OAuth deployments use this heavily.</p>
+
+      <h2 id="comparison">Side by side</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th></th><th>Structure</th><th>Crypto choice</th><th>Readable?</th><th>Revocation</th><th>Best for</th></tr></thead>
+          <tbody>
+            <tr><td><strong>JWT</strong></td><td>Signed/encrypted, flexible</td><td>Negotiable (<code>alg</code>)</td><td>Yes (JWS)</td><td>Hard</td><td>Interop, ecosystem</td></tr>
+            <tr><td><strong>PASETO</strong></td><td>Versioned, purpose-pinned</td><td>Fixed per version</td><td>Yes (public)</td><td>Hard</td><td>Safer JWT, both ends yours</td></tr>
+            <tr><td><strong>Branca</strong></td><td>Compact, encrypted</td><td>Fixed (XChaCha20)</td><td>No</td><td>Hard</td><td>Tiny encrypted tokens</td></tr>
+            <tr><td><strong>Macaroons</strong></td><td>Caveat chain</td><td>HMAC-based</td><td>Partly</td><td>Via caveats</td><td>Delegation / attenuation</td></tr>
+            <tr><td><strong>Opaque</strong></td><td>Random reference</td><td>n/a (server-side)</td><td>No</td><td>Instant</td><td>Easy revocation</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="choosing">How to choose</h2>
+      <div class="callout tip">
+        <svg class="c-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12l5 5 9-10"/></svg>
+        <p><span class="c-title">Rules of thumb</span>Need broad ecosystem/library support or OIDC interop → <strong>JWT</strong>. Control both ends and want JWT-like tokens with safer defaults → <strong>PASETO</strong>. Need easy, instant revocation → <strong>opaque + introspection</strong>. Need delegated, attenuable capabilities → <strong>macaroons</strong>. Want a tiny, always-encrypted symmetric token → <strong>Branca</strong>.</p>
+      </div>
+
+      <h2 id="pitfalls">Pitfalls</h2>
+      <div class="callout warn">
+        <svg class="c-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M12 3l9 16H3z"/><path d="M12 9v4M12 16v.5"/></svg>
+        <p><span class="c-title">Watch out for</span>Switching formats for novelty rather than need · smaller libraries/communities (less battle-testing and tooling) · assuming an alternative is automatically “secure” — implementation still matters · interop friction, since the wider world overwhelmingly speaks JWT.</p>
+      </div>
+
+      <hr class="divider">
+      <h2 id="next">Keep going</h2>
+      <div class="card-grid">
+        <a class="card hover topic-card" href="algorithms.html">
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="8" cy="8" r="4"/><path d="M11 11l9 9"/></svg></span>
+          <h3>Algorithms</h3><p>The algorithm agility that PASETO deliberately removes.</p>
+          <span class="more">Compare signing →</span>
+        </a>
+        <a class="card hover topic-card" href="vulnerabilities.html">
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="8" y="7" width="8" height="11" rx="4"/><path d="M12 7V4M8 11H3M21 11h-5M8 16l-3 2M16 16l3 2"/></svg></span>
+          <h3>Vulnerabilities</h3><p>The JWT-specific flaws several alternatives are built to avoid.</p>
+          <span class="more">Study the flaws →</span>
+        </a>
+      </div>
+    </article>
+    <div id="toc-slot"></div>
+  </main>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="../assets/js/jwt.js"></script>
+  <script src="../assets/js/site.js"></script>
+</body>
+</html>

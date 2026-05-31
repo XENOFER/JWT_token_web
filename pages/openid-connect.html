@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OpenID Connect — The ID Token &amp; Login Flow · CipherToken</title>
+  <meta name="description" content="OpenID Connect (OIDC) explained: how it adds authentication on top of OAuth 2.0, the ID token and its claims, the Authorization Code flow with PKCE, validating the ID token, discovery, and common pitfalls.">
+  <meta name="theme-color" content="#06080f">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="OpenID Connect — The ID Token & Login Flow">
+  <meta property="og:description" content="How 'Sign in with…' actually works: the ID token, Authorization Code + PKCE, and how to validate it.">
+  <meta property="og:image" content="https://example.com/assets/img/og.svg">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="../assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Sora:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+  <main class="docs">
+    <article class="content">
+      <div class="page-head">
+        <nav class="breadcrumb"><a href="../index.html">Home</a> / <span>Authentication</span> / <span class="muted">OpenID Connect</span></nav>
+        <span class="eyebrow" style="margin-top:.9rem">Authentication · Identity</span>
+        <h1>OpenID Connect</h1>
+        <p class="lead">“Sign in with Google” isn't magic — it's OpenID Connect, a thin authentication layer on top of OAuth 2.0. Its defining feature is the <strong>ID token</strong>, a JWT that tells your app who just logged in. Here's the real flow, end to end, and how to validate what you get back.</p>
+      </div>
+
+      <h2 id="recap">OIDC vs. OAuth, in one line</h2>
+      <p>OAuth 2.0 answers “what may this app <em>do</em>?” (authorization). OpenID Connect adds “who <em>is</em> this user?” (authentication) and standardises the answer as an ID token. If you only need API access, OAuth suffices; if you need to log a user in, you want OIDC. (Background: <a class="link" href="oauth-vs-jwt.html">OAuth vs JWT</a>.)</p>
+
+      <h2 id="id-token">The ID token</h2>
+      <p>The ID token is a JWT issued to <em>your application</em> asserting the user's identity. Alongside the usual <code>iss</code>/<code>sub</code>/<code>aud</code>/<code>exp</code>/<code>iat</code>, it carries identity-specific claims:</p>
+      <pre data-file="id-token.json"><code class="language-json">{
+  "iss": "https://accounts.example.com",
+  "sub": "248289761001",            // stable user identifier
+  "aud": "your-client-id",          // YOUR app — must match
+  "exp": 1735689600,
+  "iat": 1735686000,
+  "auth_time": 1735685990,          // when the user authenticated
+  "nonce": "n-0S6_WzA2Mj",          // must match what you sent
+  "email": "ada@example.com",
+  "name": "Ada Lovelace"
+}</code></pre>
+      <p>The <code>sub</code> is the durable key you should tie your local account to — not the email, which can change. The <code>aud</code> must equal your client ID, and the <code>nonce</code> must equal the one your app generated, or the token isn't yours to trust.</p>
+
+      <h2 id="flow">The Authorization Code flow with PKCE</h2>
+      <p>This is the recommended flow for essentially all app types today. Six steps:</p>
+      <div class="steps">
+        <div class="step"><div class="s-num">1</div><div class="s-body"><h4>Redirect to the provider</h4><p>Your app sends the user to the authorization endpoint with <code>scope=openid …</code>, a <code>state</code>, a <code>nonce</code>, and a PKCE <code>code_challenge</code>.</p></div></div>
+        <div class="step"><div class="s-num">2</div><div class="s-body"><h4>User authenticates &amp; consents</h4><p>At the provider (Google, etc.) — your app never sees their password.</p></div></div>
+        <div class="step"><div class="s-num">3</div><div class="s-body"><h4>Provider redirects back with a code</h4><p>A short-lived authorization <code>code</code> plus your <code>state</code> (which you verify matches).</p></div></div>
+        <div class="step"><div class="s-num">4</div><div class="s-body"><h4>Exchange the code for tokens</h4><p>Your app calls the token endpoint with the <code>code</code> and the PKCE <code>code_verifier</code> and receives an ID token + access token (+ maybe a refresh token).</p></div></div>
+        <div class="step"><div class="s-num">5</div><div class="s-body"><h4>Validate the ID token</h4><p>Check signature, <code>iss</code>, <code>aud</code>, <code>exp</code>, and <code>nonce</code> (see below).</p></div></div>
+        <div class="step"><div class="s-num">6</div><div class="s-body"><h4>Establish the session</h4><p>Map <code>sub</code> to your user, and use the access token for any API calls.</p></div></div>
+      </div>
+      <p>The authorization request (step 1) looks like this:</p>
+      <pre data-file="authorize.txt"><code class="language-bash">GET https://accounts.example.com/authorize?
+    response_type=code
+  &amp;client_id=your-client-id
+  &amp;redirect_uri=https://app.example.com/callback
+  &amp;scope=openid%20profile%20email
+  &amp;state=xyz123
+  &amp;nonce=n-0S6_WzA2Mj
+  &amp;code_challenge=E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM
+  &amp;code_challenge_method=S256</code></pre>
+
+      <h2 id="pkce">Why PKCE</h2>
+      <p><strong>PKCE</strong> (Proof Key for Code Exchange) stops a stolen authorization code from being useful. Your app invents a random <code>code_verifier</code>, sends only its hash (<code>code_challenge</code>) in step 1, and reveals the verifier itself only in step 4. An attacker who intercepts the code can't exchange it without the verifier. It began as a mobile/public-client protection and is now recommended for all clients.</p>
+
+      <h2 id="scopes-claims">Scopes, claims &amp; userinfo</h2>
+      <p>The <code>openid</code> scope is what makes a request OIDC at all. Adding <code>profile</code> or <code>email</code> asks for those claim sets, which may arrive in the ID token or be fetched from the <strong>userinfo</strong> endpoint using the access token. Request only the scopes you actually need.</p>
+
+      <h2 id="validate">Validating the ID token</h2>
+      <p>An ID token is only trustworthy after these checks — most handled by a good library, but all essential:</p>
+      <pre data-file="validate.js"><code class="language-js">import * as jose from 'jose';
+
+const JWKS = jose.createRemoteJWKSet(
+  new URL('https://accounts.example.com/.well-known/jwks.json'));
+
+const { payload } = await jose.jwtVerify(idToken, JWKS, {
+  issuer:   'https://accounts.example.com',  // iss
+  audience: 'your-client-id',                // aud == your client
+});                                          // signature + exp/iat enforced
+
+if (payload.nonce !== expectedNonce) {       // nonce you generated
+  throw new Error('nonce mismatch');
+}</code></pre>
+      <div class="callout danger" style="margin-top:1rem">
+        <svg class="c-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M12 3l9 16H3z"/><path d="M12 9v4M12 16v.5"/></svg>
+        <p><span class="c-title">Don't identify users with the access token</span>The access token is for calling APIs; the <strong>ID token</strong> is what proves identity to your app. Mixing them up is a classic OIDC bug — see <a class="link" href="oauth-vs-jwt.html#access-vs-id">access vs ID tokens</a>.</p>
+      </div>
+
+      <h2 id="discovery">Discovery</h2>
+      <p>Rather than hard-coding endpoints, OIDC providers publish a discovery document at <code>/.well-known/openid-configuration</code> listing the authorization, token, userinfo, and <code>jwks_uri</code> endpoints. Your app reads it once and wires itself up — including where to fetch keys for validation (see <a class="link" href="jwks-key-rotation.html">JWKS &amp; Key Rotation</a>).</p>
+
+      <h2 id="pitfalls">Pitfalls</h2>
+      <div class="callout warn">
+        <svg class="c-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M12 3l9 16H3z"/><path d="M12 9v4M12 16v.5"/></svg>
+        <p><span class="c-title">Watch out for</span>Using the deprecated <strong>implicit flow</strong> (use Authorization Code + PKCE) · skipping <code>nonce</code> or <code>aud</code> validation · trusting an ID token without verifying its signature · confusing ID and access tokens · requesting more scopes than you need.</p>
+      </div>
+
+      <hr class="divider">
+      <h2 id="next">Keep going</h2>
+      <div class="card-grid">
+        <a class="card hover topic-card" href="oauth-vs-jwt.html">
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v18M5 7l-2 3 2 3M5 7h6M19 14l2 3-2 3M19 20h-6"/></svg></span>
+          <h3>OAuth vs JWT</h3><p>The framework OIDC sits on, and where tokens fit.</p>
+          <span class="more">Untangle it →</span>
+        </a>
+        <a class="card hover topic-card" href="jwks-key-rotation.html">
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="8" cy="8" r="4"/><path d="M11 11l9 9"/></svg></span>
+          <h3>JWKS &amp; Key Rotation</h3><p>How your app fetches the keys to validate an ID token's signature.</p>
+          <span class="more">Manage keys →</span>
+        </a>
+      </div>
+    </article>
+    <div id="toc-slot"></div>
+  </main>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-clike.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+  <script src="../assets/js/jwt.js"></script>
+  <script src="../assets/js/site.js"></script>
+</body>
+</html>

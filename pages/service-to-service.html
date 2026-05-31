@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Service-to-Service Authentication with JWTs · CipherToken</title>
+  <meta name="description" content="How services authenticate each other with JWTs: the OAuth client-credentials grant for machine-to-machine access, propagating user identity across microservices, token exchange (RFC 8693), mTLS service identity, and the pitfalls to avoid.">
+  <meta name="theme-color" content="#06080f">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Service-to-Service Authentication with JWTs">
+  <meta property="og:description" content="M2M tokens, identity propagation, token exchange, and mTLS — securing the calls between your services.">
+  <meta property="og:image" content="https://example.com/assets/img/og.svg">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="../assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Sora:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+  <main class="docs">
+    <article class="content">
+      <div class="page-head">
+        <nav class="breadcrumb"><a href="../index.html">Home</a> / <span>Advanced</span> / <span class="muted">Service-to-Service</span></nav>
+        <span class="eyebrow" style="margin-top:.9rem">Advanced · Integration</span>
+        <h1>Service-to-service auth</h1>
+        <p class="lead">Tokens aren't only for users. In a microservice world, services call services — sometimes on their own behalf, sometimes carrying a user's identity through a chain of hops. This chapter covers both: machine-to-machine tokens, and how to propagate identity downstream without handing every service the keys to the kingdom.</p>
+      </div>
+
+      <h2 id="m2m">Machine-to-machine tokens</h2>
+      <p>When there's no human — a cron job, a backend worker, one API calling another — the caller authenticates as <em>itself</em>. The standard mechanism is OAuth 2.0's <strong>client-credentials grant</strong>: the service presents its client ID and secret (or a signed client assertion) to the authorization server and receives an access token representing the service.</p>
+      <pre data-file="client-credentials.http"><code class="language-bash">POST /oauth/token HTTP/1.1
+Host: auth.example.com
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=client_credentials
+&amp;client_id=orders-service
+&amp;client_secret=••••••••
+&amp;audience=https://inventory.example.com
+&amp;scope=inventory.read</code></pre>
+      <p>The returned token's <code>sub</code> is the service, its <code>aud</code> is the API being called, and its <code>scope</code> is narrowed to what the job needs. Treat the client secret like any signing key — store it in a vault and rotate it.</p>
+
+      <h2 id="propagation">Propagating user identity</h2>
+      <p>Now the harder case. A request enters at a gateway, which calls <em>Service A</em>, which calls <em>Service B</em>. How does B know <em>which user</em> this is for? Two approaches:</p>
+      <div class="vs-grid">
+        <div class="vs-col" style="border-color:var(--border)">
+          <div class="vs-head" style="color:var(--warn);background:var(--warn-dim)">Pass-through</div>
+          <div style="padding:1rem"><p style="margin:0;font-size:.9rem">Forward the user's original token downstream. Simple — but every service can now use that token, its <code>aud</code> doesn't really fit B, and a leak anywhere is a leak everywhere.</p></div>
+        </div>
+        <div class="vs-col good">
+          <div class="vs-head"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12l5 5 9-10"/></svg>Token exchange</div>
+          <div style="padding:1rem"><p style="margin:0;font-size:.9rem">Service A swaps the incoming token for a new one scoped and audienced for B. Least privilege, correct audience, and a recorded delegation chain.</p></div>
+        </div>
+      </div>
+
+      <h2 id="token-exchange">Token exchange (RFC 8693)</h2>
+      <p><strong>Token exchange</strong> lets a service trade one token for another with a different audience, narrower scope, or an added actor. Service A sends the user's token to the authorization server and gets back a token meant specifically for B — still tied to the user, but minimal.</p>
+      <pre data-file="token-exchange.http"><code class="language-bash">POST /oauth/token HTTP/1.1
+grant_type=urn:ietf:params:oauth:grant-type:token-exchange
+&amp;subject_token=eyJhbGciOiJSUzI1Ni␣...   // the user's token
+&amp;subject_token_type=urn:ietf:params:oauth:token-type:jwt
+&amp;audience=https://serviceB.example.com
+&amp;scope=orders.read</code></pre>
+      <p>The exchanged token can carry an <strong><code>act</code> (actor)</strong> claim recording that Service A is acting on the user's behalf — a useful audit trail when a call crosses several services.</p>
+
+      <h2 id="mtls">mTLS &amp; service identity</h2>
+      <p>Authenticating <em>which service</em> is calling is often done at the transport layer with <strong>mutual TLS</strong>: each service holds a certificate, and connections are only accepted from peers presenting a trusted one. This pairs naturally with certificate-bound tokens (see <a class="link" href="dpop.html#mtls">DPoP &amp; mTLS</a>). In practice a <strong>service mesh</strong> (Istio, Linkerd) frequently provisions and rotates these certificates and enforces mTLS for you, so application code carries only the user-identity token.</p>
+
+      <h2 id="patterns">Practical patterns</h2>
+      <ul>
+        <li><strong>Verify at the edge, propagate internally.</strong> The gateway validates the user's token once, then mints or exchanges narrow internal tokens for downstream calls.</li>
+        <li><strong>One audience per service.</strong> Give each service tokens addressed to it, so a token for A can't be replayed against B.</li>
+        <li><strong>Keep internal tokens short-lived.</strong> Minutes, not hours — limit the blast radius inside the mesh.</li>
+        <li><strong>Don't trust the network.</strong> “Internal” isn't “safe” — verify tokens (and ideally mTLS) even between your own services.</li>
+      </ul>
+
+      <h2 id="pitfalls">Pitfalls</h2>
+      <div class="callout warn">
+        <svg class="c-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M12 3l9 16H3z"/><path d="M12 9v4M12 16v.5"/></svg>
+        <p><span class="c-title">Watch out for</span><strong>Audience confusion</strong> — one token accepted everywhere (see <a class="link" href="vulnerabilities.html#v-aud">missing aud check</a>) · over-broad scopes propagated unchanged · long-lived service secrets that never rotate · assuming the internal network is trusted · forwarding a user token to a service that logs it.</p>
+      </div>
+
+      <hr class="divider">
+      <h2 id="next">Keep going</h2>
+      <div class="card-grid">
+        <a class="card hover topic-card" href="dpop.html">
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l8 3v6c0 5-3.4 7.8-8 9-4.6-1.2-8-4-8-9V6l8-3z"/></svg></span>
+          <h3>DPoP / Binding</h3><p>Sender-constraining and mTLS — binding tokens to the caller.</p>
+          <span class="more">Bind tokens →</span>
+        </a>
+        <a class="card hover topic-card" href="openid-connect.html">
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/></svg></span>
+          <h3>OpenID Connect</h3><p>Where the user's identity originates before it's propagated.</p>
+          <span class="more">See the login flow →</span>
+        </a>
+      </div>
+    </article>
+    <div id="toc-slot"></div>
+  </main>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-clike.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+  <script src="../assets/js/jwt.js"></script>
+  <script src="../assets/js/site.js"></script>
+</body>
+</html>
