@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Working with JWTs in Burp Suite · CipherToken</title>
+  <meta name="description" content="How to attack JWTs with Burp Suite and the JWT Editor extension: installing it, editing the header and payload, generating and importing keys, signing, and the built-in attacks (embedded JWK, alg:none, algorithm confusion) — the practical workflow for the PortSwigger JWT labs.">
+  <meta name="theme-color" content="#06080f">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Working with JWTs in Burp Suite">
+  <meta property="og:description" content="Install the JWT Editor, edit and re-sign tokens, manage keys, and run the embedded-JWK, none, and key-confusion attacks.">
+  <meta property="og:image" content="https://example.com/assets/img/og.svg">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="../assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Sora:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+  <main class="docs">
+    <article class="content">
+      <div class="page-head">
+        <nav class="breadcrumb"><a href="../index.html">Home</a> / <span>Security</span> / <span class="muted">Burp Suite</span></nav>
+        <span class="eyebrow" style="margin-top:.9rem">Security · Offensive</span>
+        <h1>Working with JWTs in Burp Suite</h1>
+        <p class="lead">Burp Suite, with the free <strong>JWT Editor</strong> extension, is the tool you'll reach for on essentially every JWT lab and authorized test. It decodes tokens, lets you edit and re-sign them, manages keys, and packages the trickier attacks behind a button. This is the hands-on workflow.</p>
+      </div>
+
+      <div class="callout danger">
+        <svg class="c-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M12 3l8 3v6c0 5-3.4 7.8-8 9-4.6-1.2-8-4-8-9V6l8-3z"/><path d="M12 8v4M12 15v.5"/></svg>
+        <p><span class="c-title">Authorized targets only</span>Use this against PortSwigger's <a class="link" href="https://portswigger.net/web-security/jwt" target="_blank" rel="noopener">Web Security Academy</a> labs or systems you're explicitly permitted to test.</p>
+      </div>
+
+      <h2 id="extension">Install the JWT Editor extension</h2>
+      <p>In Burp, open <em>Extensions → BApp Store</em>, find <strong>JWT Editor</strong>, and install it (it works in Community and Professional). It adds two things: a <strong>JSON Web Token</strong> tab in the message editor (visible in Proxy and Repeater whenever a request contains a JWT), and a <strong>JWT Editor Keys</strong> tab in Burp's main window for managing the keys you'll sign with.</p>
+
+      <h2 id="editing">Reading &amp; editing a token</h2>
+      <p>Capture a request carrying a token (the <code>Authorization: Bearer</code> header or a cookie), then send it to <strong>Repeater</strong>. Switch to the <strong>JSON Web Token</strong> tab and you'll see the header and payload decoded into editable text. Change whatever you're targeting — typically a privilege claim such as <code>role</code> or an identity claim like <code>sub</code> — and Burp re-encodes the parts for you. Sending it as-is (without re-signing) is exactly how you test whether the server bothers to verify the signature at all.</p>
+
+      <h2 id="keys">Managing keys</h2>
+      <p>Attacks that need a valid-looking signature require a key. On the <strong>JWT Editor Keys</strong> tab you can:</p>
+      <ul>
+        <li><strong>Generate an RSA key</strong> — a fresh key pair for <code>jwk</code>/<code>jku</code> injection, where the server will trust the key you supply.</li>
+        <li><strong>Import a key</strong> from JWK or PEM — e.g. a public key you pulled from the target's <code>/.well-known/jwks.json</code>.</li>
+        <li><strong>Create a symmetric key</strong> — needed for the algorithm-confusion attack, where the target's <em>public</em> key (as PEM) becomes your HMAC secret.</li>
+      </ul>
+
+      <h2 id="signing">Signing</h2>
+      <p>After editing the token, use the <strong>Sign</strong> button on the JSON Web Token tab. You pick which key to sign with and the algorithm, and choose how the header is handled — leave it as is, or have the extension embed your public key via the <code>jwk</code> parameter. This is the manual path; for the common attacks there are one-click helpers.</p>
+
+      <h2 id="attacks">Built-in attacks</h2>
+      <p>The <strong>Attack</strong> dropdown on the JSON Web Token tab automates the fiddly bits:</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Attack</th><th>What it does</th><th>Targets</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Embedded JWK</strong></td><td>Generates a key, embeds the public half in the <code>jwk</code> header, and signs with it</td><td><a class="link" href="jwt-attacks.html#jwk"><code>jwk</code> injection</a></td></tr>
+            <tr><td><strong>Sign with <code>alg:none</code></strong></td><td>Sets <code>alg</code> to a <code>none</code> variant and strips the signature</td><td><a class="link" href="jwt-attacks.html#no-sig">no-signature</a></td></tr>
+            <tr><td><strong>Key confusion</strong> (manual)</td><td>Sign <code>HS256</code> using a symmetric key created from the target's public-key PEM</td><td><a class="link" href="algorithm-confusion.html">algorithm confusion</a></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>For the <code>none</code> case, the resulting header is simply:</p>
+      <pre data-file="none.json"><code class="language-json">{ "alg": "none", "typ": "JWT" }</code></pre>
+      <p>For <code>kid</code> path traversal you won't need a helper — just edit the <code>kid</code> value in the header (e.g. <code>../../../../../dev/null</code>) and sign with an empty symmetric key.</p>
+
+      <h2 id="scanner">Scanning</h2>
+      <p>Burp Scanner (Professional) flags some JWT issues automatically, but the real work — tampering claims, swapping algorithms, injecting keys — happens by hand in <strong>Repeater</strong> with the JSON Web Token tab. Treat the scanner as a first pass, not a substitute.</p>
+
+      <h2 id="workflow">A lab workflow</h2>
+      <div class="steps">
+        <div class="step"><div class="s-num">1</div><div class="s-body"><h4>Capture</h4><p>Browse the lab through Burp's proxy until you have an authenticated request carrying the token.</p></div></div>
+        <div class="step"><div class="s-num">2</div><div class="s-body"><h4>Send to Repeater</h4><p>Right-click → <em>Send to Repeater</em>, then open the JSON Web Token tab.</p></div></div>
+        <div class="step"><div class="s-num">3</div><div class="s-body"><h4>Edit the claim</h4><p>Set the claim that proves impact — often <code>sub</code> to <code>administrator</code>.</p></div></div>
+        <div class="step"><div class="s-num">4</div><div class="s-body"><h4>Pick the attack</h4><p>Send unsigned to test verification; or use Embedded JWK, <code>alg:none</code>, a cracked secret, or key confusion depending on the flaw.</p></div></div>
+        <div class="step"><div class="s-num">5</div><div class="s-body"><h4>Send &amp; confirm</h4><p>Replay the request and check you've reached the protected function.</p></div></div>
+      </div>
+
+      <hr class="divider">
+      <h2 id="next">Keep going</h2>
+      <div class="card-grid">
+        <a class="card hover topic-card" href="jwt-attacks.html">
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/></svg></span>
+          <h3>Attacking JWTs</h3><p>The full catalogue of attacks these Burp tools carry out.</p>
+          <span class="more">All the attacks →</span>
+        </a>
+        <a class="card hover topic-card" href="algorithm-confusion.html">
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v18M5 7l-2 3 2 3M5 7h6M19 14l2 3-2 3M19 20h-6"/></svg></span>
+          <h3>Algorithm Confusion</h3><p>The key-confusion attack, where Burp's symmetric-key trick comes in.</p>
+          <span class="more">Do the walkthrough →</span>
+        </a>
+      </div>
+    </article>
+    <div id="toc-slot"></div>
+  </main>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-clike.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+  <script src="../assets/js/jwt.js"></script>
+  <script src="../assets/js/site.js"></script>
+</body>
+</html>
