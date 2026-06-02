@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Recon &amp; Attack-Surface Mapping · CipherToken</title>
+  <meta name="description" content="Where real bugs start: how red teamers and bug bounty hunters map a target's attack surface before testing it — scope, asset and subdomain enumeration, content discovery, tech fingerprinting, mapping the auth and token surface, finding APIs, and automation.">
+  <meta name="theme-color" content="#06080f">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Recon & Attack-Surface Mapping">
+  <meta property="og:description" content="You can't test what you can't see. The recon workflow that finds most real bugs — assets, content, tech, and the auth surface.">
+  <meta property="og:image" content="https://example.com/assets/img/og.svg">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="../assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Sora:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+  <main class="docs">
+    <article class="content">
+      <div class="page-head">
+        <nav class="breadcrumb"><a href="../index.html">Home</a> / <span>Bug Hunting</span> / <span class="muted">Recon</span></nav>
+        <span class="eyebrow" style="margin-top:.9rem">Bug Hunting · Recon</span>
+        <h1>Recon &amp; attack-surface mapping</h1>
+        <p class="lead">Most real-world bugs aren't found by clever exploitation — they're found by <em>seeing</em> something nobody else bothered to look at. Reconnaissance is the unglamorous, decisive first phase: building a complete map of what a target exposes, so you know where to point everything that follows.</p>
+      </div>
+
+      <div class="callout danger">
+        <svg class="c-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M12 3l8 3v6c0 5-3.4 7.8-8 9-4.6-1.2-8-4-8-9V6l8-3z"/><path d="M12 8v4M12 15v.5"/></svg>
+        <p><span class="c-title">Stay in scope</span>Only enumerate and test assets that are <strong>in scope</strong> for a bug bounty program, covered by a signed engagement, or that you own. Recon can touch a lot of infrastructure quickly — out-of-scope probing is how researchers get banned or worse.</p>
+      </div>
+
+      <h2 id="scope">Start with scope</h2>
+      <p>Before a single tool runs, read the rules. A bug bounty program's scope tells you which domains, apps, and asset types are fair game — and which are explicitly off-limits. A red-team engagement has rules of engagement and an objective. Recon that ignores scope isn't thorough, it's reckless. Write the in-scope and out-of-scope lists down and keep them in front of you.</p>
+
+      <h2 id="assets">Enumerate the assets</h2>
+      <p>For a wildcard scope, the first job is finding everything the organisation runs. Pull subdomains from passive sources and certificate-transparency logs, then resolve them and probe which are actually alive:</p>
+      <pre data-file="enumerate.sh"><code class="language-bash"># Passive subdomain discovery → probe which hosts are live
+subfinder -d target.com -silent | httpx -silent -title -tech-detect
+
+# Certificate transparency is a goldmine for hidden hostnames
+# (e.g. crt.sh) — combine multiple sources, then dedupe</code></pre>
+      <p>Tools worth knowing: <strong>subfinder</strong>, <strong>amass</strong>, and <strong>assetfinder</strong> for discovery; <strong>dnsx</strong> to resolve; <strong>httpx</strong> to probe and grab titles, status codes, and tech. The output is your universe of hosts.</p>
+
+      <h2 id="content">Content discovery</h2>
+      <p>Per host, the visible site is rarely the whole site. Brute-force directories and files, mine JavaScript for endpoints and secrets, and pull historical URLs that may point to forgotten functionality:</p>
+      <pre data-file="content.sh"><code class="language-bash"># Directory / file discovery
+ffuf -w wordlist.txt -u https://target.com/FUZZ -mc 200,301,302,401,403
+
+# Historical URLs from archives often reveal old endpoints/params
+gau target.com | sort -u</code></pre>
+      <p>Use <strong>ffuf</strong>, <strong>gobuster</strong>, or <strong>dirsearch</strong> with good wordlists (<strong>SecLists</strong>); <strong>gau</strong>/<strong>waybackurls</strong> for archived URLs; and read linked <strong>JS files</strong> for hidden API paths, parameters, and occasionally hard-coded keys. Tools like <strong>Arjun</strong> help discover hidden parameters.</p>
+
+      <h2 id="tech">Fingerprint the stack</h2>
+      <p>Knowing <em>what</em> something runs narrows the bug classes worth chasing. Identify the server, framework, CMS, WAF, and — crucially for this site — the auth provider. Response headers, error pages, cookie names, and tools like <strong>Wappalyzer</strong> or <code>httpx -tech-detect</code> all leak this. A Django app, a WordPress install, and a bespoke Node API each fail in different ways.</p>
+
+      <h2 id="auth-surface">Map the auth &amp; token surface</h2>
+      <p>This is where token bugs begin — and the bridge from general recon to everything else on this site. Catalogue every place authentication happens: login, registration, password reset, refresh, and SSO endpoints; whether sessions ride in cookies or <code>Authorization: Bearer</code> headers; and any identity-provider discovery documents:</p>
+      <pre data-file="auth-surface.sh"><code class="language-bash"># OIDC / OAuth discovery — often wide open and very informative
+curl -s https://target.com/.well-known/openid-configuration
+# note: authorization_endpoint, token_endpoint, jwks_uri
+
+# The key set itself (public keys the app verifies with)
+curl -s https://target.com/.well-known/jwks.json</code></pre>
+      <p>Once you've found tokens, the <a class="link" href="jwt-checklist.html">JWT testing checklist</a> tells you exactly what to do with them, and <a class="link" href="jwt-attacks.html">Attacking JWTs</a> covers the techniques.</p>
+
+      <h2 id="api">Find the APIs</h2>
+      <p>APIs are a deep, frequently under-tested surface. Hunt for REST and GraphQL endpoints, exposed <strong>Swagger/OpenAPI</strong> documentation, versioned routes (<code>/v1/</code>, <code>/v2/</code>), and undocumented endpoints referenced only in client JavaScript or mobile traffic. For GraphQL, introspection (where enabled) hands you the entire schema; tools like <strong>graphw00f</strong> and <strong>InQL</strong> help.</p>
+
+      <h2 id="automate">Automate &amp; monitor</h2>
+      <p>Run template-based scanners to sweep for known issues across many hosts, and — for bounty work — monitor continuously, since new subdomains and freshly shipped features are where the easy, un-dupe'd bugs live:</p>
+      <pre data-file="scan.sh"><code class="language-bash"># Sweep live hosts for known misconfigurations/CVEs with templates
+nuclei -l live-hosts.txt</code></pre>
+      <p><strong>nuclei</strong> is the workhorse here. Pair it with scheduled re-runs of your enumeration so you catch changes as they ship.</p>
+
+      <h2 id="organize">Organize what you find</h2>
+      <p>Recon produces a flood of data; the hunters who win are the ones who keep it organised. Maintain a living map of hosts, endpoints, parameters, and tech per target — Burp's sitemap plus your own notes — so that when you learn a new technique, you already know exactly where to apply it.</p>
+
+      <hr class="divider">
+      <h2 id="next">Keep going</h2>
+      <div class="card-grid">
+        <a class="card hover topic-card" href="jwt-checklist.html">
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></span>
+          <h3>JWT Test Checklist</h3><p>The systematic matrix to run once you've found a token.</p>
+          <span class="more">Open the checklist →</span>
+        </a>
+        <a class="card hover topic-card" href="hunter-mindsets.html">
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/></svg></span>
+          <h3>Hunter Mindsets</h3><p>How red teamers, bounty hunters, and CTF players use this recon differently.</p>
+          <span class="more">Compare approaches →</span>
+        </a>
+      </div>
+    </article>
+    <div id="toc-slot"></div>
+  </main>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-clike.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+  <script src="../assets/js/jwt.js"></script>
+  <script src="../assets/js/site.js"></script>
+</body>
+</html>

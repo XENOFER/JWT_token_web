@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Hunter Mindsets — Red Team vs Bug Bounty vs CTF · CipherToken</title>
+  <meta name="description" content="The same target, three very different games. How red teamers, bug bounty hunters, and CTF players approach finding bugs — their goals, constraints, tactics, and how each would attack the same JWT.">
+  <meta name="theme-color" content="#06080f">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Hunter Mindsets — Red Team vs Bug Bounty vs CTF">
+  <meta property="og:description" content="Three ways to hunt the same bug: objective-driven stealth, breadth-first impact, and time-boxed pattern recognition.">
+  <meta property="og:image" content="https://example.com/assets/img/og.svg">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="../assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Sora:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+  <main class="docs">
+    <article class="content">
+      <div class="page-head">
+        <nav class="breadcrumb"><a href="../index.html">Home</a> / <span>Bug Hunting</span> / <span class="muted">Mindsets</span></nav>
+        <span class="eyebrow" style="margin-top:.9rem">Bug Hunting · Mindset</span>
+        <h1>Red team vs bug bounty vs CTF</h1>
+        <p class="lead">Hand the same web app to a red teamer, a bug bounty hunter, and a CTF player and you'll get three completely different sessions. They're all "finding bugs," but the goals, constraints, and payoffs diverge — and understanding each mindset makes you sharper at all three.</p>
+      </div>
+
+      <h2 id="overview">Three games at a glance</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th></th><th>Bug bounty</th><th>Red team</th><th>CTF</th></tr></thead>
+          <tbody>
+            <tr><td>Goal</td><td>Valid, impactful, in-scope bugs</td><td>Achieve an objective like a real attacker</td><td>Capture the flag</td></tr>
+            <tr><td>Scope</td><td>Defined program scope</td><td>Rules of engagement + objective</td><td>The challenge box</td></tr>
+            <tr><td>Time</td><td>Open-ended, ongoing</td><td>Fixed engagement window</td><td>Tightly time-boxed</td></tr>
+            <tr><td>Stealth</td><td>Mostly irrelevant</td><td>Critical — avoid detection</td><td>Irrelevant</td></tr>
+            <tr><td>Style</td><td>Breadth-first, high volume</td><td>Depth, objective-focused</td><td>Pattern recognition, speed</td></tr>
+            <tr><td>Success</td><td>Accepted report + bounty</td><td>Objective met; gaps reported</td><td>Flag submitted</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="bounty">The bug bounty hunter</h2>
+      <p>A bounty hunter plays a numbers game against the clock of <em>duplicates</em>. The work is recon-heavy and breadth-first: enumerate as much in-scope surface as possible, run repeatable tests across all of it, and pounce on anything new before anyone else reports it. Two things decide the payout — whether the bug is genuinely <strong>impactful</strong>, and whether the report proves it clearly. Automation and good <a class="link" href="recon.html">recon</a> are the edge; chasing low-impact findings is the trap.</p>
+
+      <h2 id="redteam">The red teamer</h2>
+      <p>A red teamer isn't cataloguing bugs — they're emulating a real adversary to meet an <strong>objective</strong> (domain admin, a sensitive dataset) and, just as importantly, to test whether the defenders <em>notice</em>. That changes everything: depth over breadth, stealth and OPSEC over volume, and chaining a few quiet steps over firing loud scanners. A single forged token that enables lateral movement is worth more than a hundred noisy findings — provided the blue team never sees it coming. It's a fully authorized engagement, but one played like the real thing.</p>
+
+      <h2 id="ctf">The CTF player</h2>
+      <p>A CTF challenge is deliberately vulnerable and time-boxed, so the game is <strong>recognition and speed</strong>: what's the <em>intended</em> bug here, and what's the fastest path to the flag? There's no scope to respect, no defender to evade, and no report to write — just a puzzle with a known solution. The strongest players have seen the patterns before (an <code>alg:none</code> here, an algorithm-confusion there), reach instantly for the right tool, and don't over-think a challenge that has a clean intended path.</p>
+
+      <h2 id="same-bug">One JWT, three lenses</h2>
+      <p>Picture the same finding — a server vulnerable to <a class="link" href="algorithm-confusion.html">algorithm confusion</a> — seen by each:</p>
+      <div class="vs-grid" style="grid-template-columns:repeat(3,1fr)">
+        <div class="vs-col"><div class="vs-head" style="color:var(--cyan);background:rgba(70,224,224,.1)">Bounty</div><div style="padding:1rem"><p style="margin:0;font-size:.88rem">Confirm it, forge an admin token, demonstrate concrete impact (access an admin endpoint), and write a crisp report with repro steps.</p></div></div>
+        <div class="vs-col"><div class="vs-head" style="color:var(--violet);background:rgba(157,123,255,.12)">Red team</div><div style="padding:1rem"><p style="margin:0;font-size:.88rem">Quietly mint a privileged token, use it to pivot through <a class="link" href="service-to-service.html">service-to-service</a> trust, and reach the objective without tripping alerts.</p></div></div>
+        <div class="vs-col"><div class="vs-head" style="color:var(--ok);background:var(--ok-dim)">CTF</div><div style="padding:1rem"><p style="margin:0;font-size:.88rem">Spot the <code>RS256</code> + exposed public key instantly, run <code>jwt_tool -X k</code>, forge the flag-granting token, submit, done.</p></div></div>
+      </div>
+
+      <h2 id="crossover">What transfers</h2>
+      <p>The boundaries are porous, and the best practitioners borrow across them. Bounty recon discipline makes red-team target mapping faster. CTF pattern recognition makes you spot a vulnerable token in seconds on a real engagement. Red-team chaining teaches bounty hunters to escalate a "low" into a "critical." Learning the JWT material on this site through all three lenses — <em>how to report it</em>, <em>how to weaponise it quietly</em>, and <em>how to spot it fast</em> — is how a single technique becomes genuinely useful everywhere.</p>
+
+      <h2 id="traps">Mindset traps</h2>
+      <div class="callout warn">
+        <svg class="c-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M12 3l9 16H3z"/><path d="M12 9v4M12 16v.5"/></svg>
+        <p><span class="c-title">Watch the failure mode of each</span><strong>Bounty:</strong> grinding breadth while ignoring impact (and reporting dupes). <strong>Red team:</strong> being noisy — a caught operator failed the assessment regardless of access gained. <strong>CTF:</strong> over-engineering a challenge that has a simple intended path, and burning the clock.</p>
+      </div>
+
+      <hr class="divider">
+      <h2 id="next">Keep going</h2>
+      <div class="card-grid">
+        <a class="card hover topic-card" href="recon.html">
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></span>
+          <h3>Recon</h3><p>The attack-surface mapping every one of these hunters starts from.</p>
+          <span class="more">Map the target →</span>
+        </a>
+        <a class="card hover topic-card" href="jwt-checklist.html">
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></span>
+          <h3>JWT Test Checklist</h3><p>The shared matrix each mindset runs in its own way.</p>
+          <span class="more">Open the checklist →</span>
+        </a>
+      </div>
+    </article>
+    <div id="toc-slot"></div>
+  </main>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="../assets/js/jwt.js"></script>
+  <script src="../assets/js/site.js"></script>
+</body>
+</html>

@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>The JWT Testing Checklist · CipherToken</title>
+  <meta name="description" content="A systematic, repeatable checklist for testing any JWT-using application: recon, signature-verification tests, secret strength, header-parameter injection, algorithm confusion, claim and logic checks, and storage/transport/replay — each step linked to how to do it.">
+  <meta name="theme-color" content="#06080f">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="The JWT Testing Checklist">
+  <meta property="og:description" content="A repeatable test matrix that ties every JWT attack together — run it against any token-using app.">
+  <meta property="og:image" content="https://example.com/assets/img/og.svg">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="../assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Sora:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .ck-progress { position: sticky; top: calc(var(--nav-h) + 8px); background: var(--bg); padding: .6rem 0; z-index: 5; margin-bottom: 1.5rem; }
+    .ck-bar { height: 10px; border-radius: 999px; background: var(--surface-2); overflow: hidden; border: 1px solid var(--border); }
+    .ck-fill { height: 100%; width: 0; border-radius: 999px; background: linear-gradient(90deg, var(--cyan), var(--indigo) 60%, var(--violet)); transition: width .35s var(--ease); }
+    .ck-label { display: flex; justify-content: space-between; font-family: var(--f-mono); font-size: .82rem; color: var(--text-2); margin-bottom: .45rem; }
+    .ck { list-style: none; margin: 0 0 .5rem; padding: 0; }
+    .ck li { display: flex; gap: .7rem; align-items: flex-start; padding: .6rem .8rem; border: 1px solid var(--border); border-radius: 10px; margin-bottom: .5rem; transition: border-color .16s, background .16s; }
+    .ck li:hover { border-color: var(--border-2); }
+    .ck input { margin-top: .25rem; width: 17px; height: 17px; accent-color: var(--cyan); flex: none; cursor: pointer; }
+    .ck label { cursor: pointer; font-size: .94rem; line-height: 1.5; }
+    .ck input:checked + label { color: var(--text-3); text-decoration: line-through; text-decoration-color: var(--border-2); }
+    .ck .tag { font-family: var(--f-mono); font-size: .72rem; color: var(--cyan); border: 1px solid var(--border); border-radius: 6px; padding: .05rem .35rem; margin-left: .35rem; white-space: nowrap; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <main class="docs">
+    <article class="content">
+      <div class="page-head">
+        <nav class="breadcrumb"><a href="../index.html">Home</a> / <span>Bug Hunting</span> / <span class="muted">JWT Checklist</span></nav>
+        <span class="eyebrow" style="margin-top:.9rem">Bug Hunting · Checklist</span>
+        <h1>The JWT testing checklist</h1>
+        <p class="lead">A repeatable matrix to run against any token-using application. Work top to bottom: each item is a concrete check, and the tag beside it links to the page that shows you how. Tick them off as you go.</p>
+      </div>
+
+      <div class="ck-progress">
+        <div class="ck-label"><span>Progress</span><span id="ck-count">0 / 0</span></div>
+        <div class="ck-bar"><div class="ck-fill" id="ck-fill"></div></div>
+      </div>
+
+      <div class="callout note">
+        <svg class="c-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="12" r="9"/><path d="M12 8v.5M12 11v5"/></svg>
+        <p><span class="c-title">In-scope testing only</span>Run this against deliberately-vulnerable labs or applications you're authorized to assess. Progress is tracked for this page session only.</p>
+      </div>
+
+      <h2 id="recon">1 · Recon</h2>
+      <ul class="ck">
+        <li><input type="checkbox" id="c1" class="ckbox"><label for="c1">Locate where tokens are issued and accepted (login, refresh, SSO, API headers)<a class="tag" href="recon.html#auth-surface">recon</a></label></li>
+        <li><input type="checkbox" id="c2" class="ckbox"><label for="c2">Capture a valid token and decode its header + payload<a class="tag" href="playground.html">playground</a></label></li>
+        <li><input type="checkbox" id="c3" class="ckbox"><label for="c3">Note the <code>alg</code>, the privilege/identity claims, and whether <code>exp</code>/<code>aud</code> are present</label></li>
+        <li><input type="checkbox" id="c4" class="ckbox"><label for="c4">Find the key material — <code>/.well-known/jwks.json</code> and OIDC discovery<a class="tag" href="jwks-key-rotation.html">jwks</a></label></li>
+      </ul>
+
+      <h2 id="signature">2 · Signature verification</h2>
+      <ul class="ck">
+        <li><input type="checkbox" id="c5" class="ckbox"><label for="c5">Tamper a claim and resend with the original (now invalid) signature — is it accepted?<a class="tag" href="jwt-attacks.html#arbitrary-sig">attack</a></label></li>
+        <li><input type="checkbox" id="c6" class="ckbox"><label for="c6">Strip the signature entirely and resend</label></li>
+        <li><input type="checkbox" id="c7" class="ckbox"><label for="c7">Set <code>alg</code> to <code>none</code> — and try case variants (<code>None</code>, <code>NONE</code>, <code>nOnE</code>)<a class="tag" href="jwt-attacks.html#no-sig">attack</a></label></li>
+      </ul>
+
+      <h2 id="secret">3 · Secret strength (HMAC)</h2>
+      <ul class="ck">
+        <li><input type="checkbox" id="c8" class="ckbox"><label for="c8">If <code>HS*</code>, attempt to crack the secret offline (hashcat <code>-m 16500</code> / jwt_tool)<a class="tag" href="jwt-attacks.html#brute-force">attack</a></label></li>
+        <li><input type="checkbox" id="c9" class="ckbox"><label for="c9">If cracked, forge a token with elevated claims and re-sign it</label></li>
+      </ul>
+
+      <h2 id="header">4 · Header parameters</h2>
+      <ul class="ck">
+        <li><input type="checkbox" id="c10" class="ckbox"><label for="c10">Inject a self-signed key via <code>jwk</code><a class="tag" href="jwt-attacks.html#jwk">attack</a></label></li>
+        <li><input type="checkbox" id="c11" class="ckbox"><label for="c11">Point <code>jku</code> at a key set you control<a class="tag" href="jwt-attacks.html#jku">attack</a></label></li>
+        <li><input type="checkbox" id="c12" class="ckbox"><label for="c12">Abuse <code>kid</code> — path traversal (e.g. <code>../../dev/null</code>) or SQL injection<a class="tag" href="jwt-attacks.html#kid">attack</a></label></li>
+        <li><input type="checkbox" id="c13" class="ckbox"><label for="c13">Test the certificate equivalents <code>x5c</code> / <code>x5u</code>, and <code>cty</code><a class="tag" href="jwt-attacks.html#other">attack</a></label></li>
+      </ul>
+
+      <h2 id="confusion">5 · Algorithm confusion</h2>
+      <ul class="ck">
+        <li><input type="checkbox" id="c14" class="ckbox"><label for="c14">If <code>RS*</code>, re-sign as <code>HS256</code> using the public key as the HMAC secret<a class="tag" href="algorithm-confusion.html">walkthrough</a></label></li>
+        <li><input type="checkbox" id="c15" class="ckbox"><label for="c15">If the public key isn't exposed, try deriving it from two tokens</label></li>
+      </ul>
+
+      <h2 id="claims">6 · Claims &amp; logic</h2>
+      <ul class="ck">
+        <li><input type="checkbox" id="c16" class="ckbox"><label for="c16">Is <code>exp</code> present <em>and</em> enforced? Replay an expired token<a class="tag" href="vulnerabilities.html#v-exp">vuln</a></label></li>
+        <li><input type="checkbox" id="c17" class="ckbox"><label for="c17">Is <code>aud</code> verified? Try a token issued for another app (cross-service relay)<a class="tag" href="vulnerabilities.html#v-aud">vuln</a></label></li>
+        <li><input type="checkbox" id="c18" class="ckbox"><label for="c18">Tamper privilege claims (<code>role</code>, <code>admin</code>, <code>sub</code>) and observe</label></li>
+        <li><input type="checkbox" id="c19" class="ckbox"><label for="c19">Check the payload for sensitive data the server shouldn't expose<a class="tag" href="vulnerabilities.html#v-sensitive">vuln</a></label></li>
+      </ul>
+
+      <h2 id="transport">7 · Storage, transport &amp; replay</h2>
+      <ul class="ck">
+        <li><input type="checkbox" id="c20" class="ckbox"><label for="c20">Is the token leaked in URLs, logs, or referrers?<a class="tag" href="vulnerabilities.html#v-storage">vuln</a></label></li>
+        <li><input type="checkbox" id="c21" class="ckbox"><label for="c21">Cookie flags — <code>HttpOnly</code>, <code>Secure</code>, <code>SameSite</code> — and CSRF exposure</label></li>
+        <li><input type="checkbox" id="c22" class="ckbox"><label for="c22">Does the token still work after logout? Test revocation &amp; replay<a class="tag" href="vulnerabilities.html#v-replay">vuln</a></label></li>
+      </ul>
+
+      <h2 id="tools">Tools to keep open</h2>
+      <p>Burp Suite with the <a class="link" href="burp-jwt.html">JWT Editor</a>, <a class="link" href="jwt-attacks.html#tooling">jwt_tool and hashcat</a>, and this site's <a class="link" href="playground.html">Playground</a> for quick decode/verify. Together they cover every row above.</p>
+
+      <hr class="divider">
+      <h2 id="next">Keep going</h2>
+      <div class="card-grid">
+        <a class="card hover topic-card" href="hunter-mindsets.html">
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/></svg></span>
+          <h3>Hunter Mindsets</h3><p>How different hunters prioritise this checklist.</p>
+          <span class="more">Compare approaches →</span>
+        </a>
+        <a class="card hover topic-card" href="jwt-attacks.html">
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="8" y="7" width="8" height="11" rx="4"/><path d="M12 7V4M8 11H3M21 11h-5"/></svg></span>
+          <h3>Attacking JWTs</h3><p>The full how-to behind every check here.</p>
+          <span class="more">All the attacks →</span>
+        </a>
+      </div>
+    </article>
+    <div id="toc-slot"></div>
+  </main>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="../assets/js/jwt.js"></script>
+  <script src="../assets/js/site.js"></script>
+  <script>
+    (function () {
+      var boxes = Array.prototype.slice.call(document.querySelectorAll('.ckbox'));
+      var fill = document.getElementById('ck-fill');
+      var count = document.getElementById('ck-count');
+      function update() {
+        var done = boxes.filter(function (b) { return b.checked; }).length;
+        count.textContent = done + ' / ' + boxes.length;
+        fill.style.width = (boxes.length ? (done / boxes.length * 100) : 0) + '%';
+      }
+      boxes.forEach(function (b) { b.addEventListener('change', update); });
+      update();
+    })();
+  </script>
+</body>
+</html>
